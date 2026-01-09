@@ -10,7 +10,7 @@ import SampleNFTAbi from "./abi/SampleNFT.json"; // Minimal ERC721 ABI with Tran
 
 // Address of the deployed Stylus (Arbitrum) NFT contract
 // Update this after deploying your own contract
-const CONTRACT_ADDRESS = "0xdb3f4ecb0298238a19ec5afd087c6d9df8041919";
+const CONTRACT_ADDRESS = "0xc5754e891e8a6b192bd65c274af66263bcf9d74a";
 
 import { useState } from "react";
 import { publicClient } from "./hooks/usePublicClient"; // viem public client for low-level RPC

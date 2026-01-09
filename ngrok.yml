@@ -1,0 +1,7 @@
+tunnels:
+  web5173:
+    proto: http
+    addr: 5173
+  web8547:
+    proto: http
+    addr: 8547
