@@ -21,6 +21,54 @@
 
 A modern, full-stack starter template for building your own [Farcaster Mini-App](https://docs.farcaster.xyz/) with [Arbitrum Stylus](https://arbitrum.io/stylus) smart contracts, TypeScript React frontend, and seamless wallet/NFT integration.
 
+---
+
+## Build Your App with Claude Code (No Coding Experience Needed)
+
+**New to coding?** You can build your own Farcaster mini-app using Claude Code. Just copy this entire prompt and paste it into Claude Code:
+
+```
+Clone the repository at https://github.com/hummusonrails/farcaster-arbitrum-miniapp-starter
+
+After cloning, read the CLAUDE.md file to understand how this codebase works.
+
+Then help me build a Farcaster mini-app. Here's what I want:
+
+App idea: [DESCRIBE YOUR APP IN 1-2 SENTENCES]
+NFT name: [WHAT SHOULD THE NFT BE CALLED?]
+NFT symbol: [3-5 LETTER SYMBOL, LIKE "COOL" OR "CATS"]
+
+Please:
+1. Propose what changes you'll make before writing any code
+2. Wait for my approval before modifying files
+3. Explain things simply - I'm new to this
+```
+
+**Example (copy this and change the details):**
+
+```
+Clone the repository at https://github.com/hummusonrails/farcaster-arbitrum-miniapp-starter
+
+After cloning, read the CLAUDE.md file to understand how this codebase works.
+
+Then help me build a Farcaster mini-app. Here's what I want:
+
+App idea: A membership NFT for my podcast listeners
+NFT name: Podcast VIP Pass
+NFT symbol: PVIP
+
+Please:
+1. Propose what changes you'll make before writing any code
+2. Wait for my approval before modifying files
+3. Explain things simply - I'm new to this
+```
+
+That's it! Claude Code will clone the repo, understand the codebase, and guide you through building your app.
+
+**Need more help?** See the [Complete Beginner's Guide](GETTING_STARTED.md) for step-by-step instructions including how to install Claude Code.
+
+---
+
 ## ✨ Features
 
 - **Minimal, production-ready React (Vite + Tailwind) frontend**
@@ -208,6 +256,63 @@ A: Replace `frontend/src/abi/SampleNFT.json` and update `CONTRACT_ADDRESS` in `f
 
 **Q: How do I serve custom NFT images?**  
 A: Place images in `public/` and reference them with a relative path in your contract metadata.
+
+## 🤖 Using This Repo with AI Coding Agents
+
+This repository is designed to work seamlessly with AI coding agents like Claude Code, Cursor, ChatGPT, and others.
+
+### Quick Start (Claude Code)
+
+1. Clone this repo
+2. Open it in Claude Code
+3. Start prompting! Claude Code automatically reads `CLAUDE.md` for context.
+
+**Example first prompt:**
+```
+I want to build a membership NFT for my podcast called "Podcast VIP" (symbol: PVIP).
+The image will be at /podcast-logo.png.
+
+Please:
+1. Propose what files you'll change
+2. Wait for my approval before modifying code
+3. After any contract changes, export and update the ABI
+```
+
+### Quick Start (Other AI Agents)
+
+For agents that don't auto-read `CLAUDE.md`, paste this at the start of your session:
+
+```
+Read the CLAUDE.md file in this repository. It contains critical rules
+for working with this codebase safely. Follow those rules for all changes.
+```
+
+### Documentation for AI Agents
+
+| File | Purpose |
+|------|---------|
+| `CLAUDE.md` | Entry point - critical rules and file map |
+| `.ai/ARCHITECTURE.md` | Deep dive on system structure |
+| `.ai/TASKS.md` | Step-by-step modification guides |
+| `.ai/SYNC_REQUIREMENTS.md` | What must stay synchronized |
+| `.ai/PROMPTS.md` | Example prompts you can copy-paste |
+| `.ai/TROUBLESHOOTING.md` | Common problems and fixes |
+
+### Key Rules for AI Agents
+
+1. **Never modify the contract without updating the ABI**
+2. **Always propose changes before writing code**
+3. **Keep CONTRACT_ADDRESS in sync with deployed contract**
+4. **Keep Farcaster manifest and frame meta tag consistent**
+
+### Example Prompts
+
+See `.ai/PROMPTS.md` for fill-in-the-blank templates, including:
+- Change the NFT theme/branding
+- Add a mint price
+- Change app colors
+- Add new contract functions
+- Prepare for production
 
 ## 🤝 Contributing
 
