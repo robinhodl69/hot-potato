@@ -1,64 +1,116 @@
 [
   {
+    "type": "function",
+    "name": "initialize",
     "inputs": [],
-    "name": "mint",
     "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "stateMutability": "nonpayable"
   },
   {
-    "inputs": [],
-    "name": "name",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "symbol",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
+    "type": "function",
+    "name": "pass_the_core",
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "token_id",
+        "name": "to",
+        "type": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "get_points",
+    "inputs": [
+      {
+        "name": "addr",
+        "type": "address"
+      }
+    ],
+    "outputs": [
+      {
         "type": "uint256"
       }
     ],
-    "name": "tokenURI",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "anonymous": false,
-    "inputs": [
-      { "indexed": true, "internalType": "address", "name": "from", "type": "address" },
-      { "indexed": true, "internalType": "address", "name": "to", "type": "address" },
-      { "indexed": true, "internalType": "uint256", "name": "tokenId", "type": "uint256" }
+    "type": "function",
+    "name": "is_melting",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "bool"
+      }
     ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "game_state",
+    "inputs": [],
+    "outputs": [
+      { "name": "current_holder", "type": "address" },
+      { "name": "previous_holder", "type": "address" },
+      { "name": "last_transfer_block", "type": "uint256" },
+      { "name": "is_melting", "type": "bool" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "admin_reset",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "register_fid",
+    "inputs": [
+      { "name": "addr", "type": "address" },
+      { "name": "fid", "type": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "name",
+    "inputs": [],
+    "outputs": [
+      { "type": "string" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "symbol",
+    "inputs": [],
+    "outputs": [
+      { "type": "string" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "tokenURI",
+    "inputs": [
+      { "name": "token_id", "type": "uint256" }
+    ],
+    "outputs": [
+      { "type": "string" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
     "name": "Transfer",
-    "type": "event"
+    "inputs": [
+      { "name": "from", "type": "address", "indexed": true },
+      { "name": "to", "type": "address", "indexed": true },
+      { "name": "tokenId", "type": "uint256", "indexed": true }
+    ],
+    "anonymous": false
   }
 ]

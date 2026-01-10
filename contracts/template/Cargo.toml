@@ -1,5 +1,5 @@
 [package]
-name = "farcaster_mini_app_starter_contract"
+name = "the_arbitrum_core"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -13,22 +13,15 @@ stylus-sdk = { version = "=0.9.0", default-features = false }
 mini-alloc = { version = "=0.9.0", default-features = false }
 openzeppelin-stylus = { git = "https://github.com/OpenZeppelin/rust-contracts-stylus", tag = "v0.2.0", default-features = false }
 
-alloy-primitives = { version = "=0.8.20", default-features = false, features = ["tiny-keccak"] }
-alloy-sol-types = { version = "=0.8.20", default-features = false }
+alloy-primitives = { version = "0.8.20", default-features = false, features = ["tiny-keccak"] }
+alloy-sol-types = { version = "0.8.20", default-features = false }
 
 [dev-dependencies]
-motsu = "0.2.1"
+motsu = "0.10.0"
 
-alloy = { version = "=1.0.20", features = [
-  "contract",
-  "network",
-  "providers",
-  "provider-http",
-  "rpc-client",
-  "rpc-types-eth",
-  "signer-local",
-  "getrandom",
-] }
+# Removed "alloy" dev-dependency to avoid c-kzg version conflict with motsu 0.10.0
+# Motsu uses c-kzg 1.0.3, while newer Alloy requires 2.1.1. 
+# We don't strictly need "alloy" for the contract logic itself, just primitives.
 
 [features]
 export-abi = ["stylus-sdk/export-abi", "openzeppelin-stylus/export-abi"]

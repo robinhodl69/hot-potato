@@ -1,0 +1,8 @@
+[workspace]
+
+[workspace.networks.sepolia]
+endpoint = "https://sepolia-rollup.arbitrum.io/rpc"
+
+[contract]
+name = "the_arbitrum_core"
+path = "src/lib.rs"

@@ -1,194 +1,210 @@
-// App.tsx
-// Main React component for the Farcaster + Arbitrum Mini-App Starter.
-// This file demonstrates wallet connection, NFT minting, and NFT gallery display using event-based discovery.
-// Use this as a template for your own Farcaster miniapp frontend.
+import { useEffect, useState } from "react";
+import { sdk } from "@farcaster/miniapp-sdk";
+import {
+  useAccount,
+  useConnect,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useReadContract,
+  useBlockNumber
+} from "wagmi";
+import { motion, AnimatePresence } from "framer-motion";
+import { Activity, Shield, TrendingUp, User, Wifi, WifiOff } from "lucide-react";
 
-import { useEffect } from "react";
-import { sdk } from "@farcaster/miniapp-sdk"; // Farcaster MiniApp SDK for social sharing
-import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt } from "wagmi"; // Wagmi hooks for EVM wallet and contract interaction
-import SampleNFTAbi from "./abi/SampleNFT.json"; // Minimal ERC721 ABI with Transfer event
+import TheArbitrumCoreAbi from "./abi/TheArbitrumCore.json";
+import CoreThree from "./components/core/CoreThree";
+import { GlassPanel, MeltdownTimer } from "./components/hud/TerminalHUD";
+import { TransferHUD } from "./components/game/TransferHUD";
 
-// Address of the deployed Stylus (Arbitrum) NFT contract
-// Update this after deploying your own contract
-const CONTRACT_ADDRESS = "0xc5754e891e8a6b192bd65c274af66263bcf9d74a";
-
-import { useState } from "react";
-import { publicClient } from "./hooks/usePublicClient"; // viem public client for low-level RPC
+const CONTRACT_ADDRESS = "0x963d9779eb0de38878a8763f9e840e3622cfba7e";
 
 export default function App() {
-  // Wagmi hooks for wallet connection and contract interaction
   const { isConnected, address } = useAccount();
-  const { connect, connectors, error, status } = useConnect();
+  const { connect, connectors, status: connectStatus } = useConnect();
+  const { data: blockNumber } = useBlockNumber({ watch: true });
+
+  // Contract State
+  const { data: gameState } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: TheArbitrumCoreAbi,
+    functionName: 'game_state',
+    query: { refetchInterval: 5000 }
+  }) as { data: [string, string, bigint, boolean] | undefined };
+
+  const { data: userPoints } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: TheArbitrumCoreAbi,
+    functionName: 'get_points',
+    args: [address],
+    query: { enabled: !!address, refetchInterval: 10000 }
+  }) as { data: bigint | undefined };
+
   const { writeContract, data: txHash, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isMinted } = useWaitForTransactionReceipt({
-    hash: txHash as `0x${string}` | undefined,
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash: txHash,
   });
 
-  const [nfts, setNfts] = useState<{ tokenId: string; image: string; name: string; description: string }[]>([]);
-  const [loadingNfts, setLoadingNfts] = useState(false);
+  // Derived State
+  const currentHolder = gameState?.[0];
+  const lastTransferBlock = gameState?.[2] || 0n;
+  const isMelting = gameState?.[3] || false;
+  const isOwner = address?.toLowerCase() === currentHolder?.toLowerCase();
+
+  // Calculate heat (0 to 1)
+  const blocksHeld = blockNumber ? Number(blockNumber - lastTransferBlock) : 0;
+  const heat = Math.min(blocksHeld / 900, 1.2); // Cap at 1.2 for "overheat" visuals
+  const blocksRemaining = Math.max(900 - blocksHeld, 0);
 
   useEffect(() => {
-    sdk.actions.ready(); // Farcaster Mini-App SDK ready
+    sdk.actions.ready();
   }, []);
 
-  useEffect(() => {
-    const fetchNFTs = async () => {
-      if (!isConnected || !address) return;
-      setLoadingNfts(true);
-      try {
-        // Find the Transfer event ABI
-        const transferEvent = SampleNFTAbi.find(
-          (e: any) => e.type === "event" && e.name === "Transfer"
-        ) as any;
-        if (!transferEvent) {
-          setNfts([]);
-          setLoadingNfts(false);
-          return;
-        }
-        // Fetch all Transfer logs
-        const logs = await publicClient.getLogs({
-          address: CONTRACT_ADDRESS as `0x${string}`,
-          event: transferEvent,
-          fromBlock: 0n,
-          toBlock: 'latest',
-        });
-        // Filter for tokens minted to this user
-        const tokenIds = logs
-          .filter((log: any) => log.args && log.args.to && log.args.to.toLowerCase() === address.toLowerCase())
-          .map((log: any) => log.args.tokenId as bigint);
-        if (tokenIds.length === 0) {
-          setNfts([]);
-          setLoadingNfts(false);
-          return;
-        }
-        // Get tokenURI for each tokenId
-        const tokens = await Promise.all(tokenIds.map(async (tokenId: bigint) => {
-          try {
-            const tokenUri = await publicClient.readContract({
-              address: CONTRACT_ADDRESS as `0x${string}`,
-              abi: SampleNFTAbi,
-              functionName: 'tokenURI',
-              args: [tokenId]
-            });
-            // Debug: Log the raw tokenUri
-            console.log('Raw tokenURI for tokenId', tokenId.toString(), ':', tokenUri);
-            let meta = { image: '', name: '', description: '' };
-            if (typeof tokenUri === 'string') {
-              try {
-                meta = JSON.parse(tokenUri);
-              } catch (e) {
-                console.error('JSON parse error for tokenURI:', e, tokenUri);
-              }
-            }
-            return { tokenId: tokenId.toString(), ...meta };
-          } catch {
-            return { tokenId: tokenId.toString(), image: '', name: '', description: '' };
-          }
-        }));
-        // Debug: Log the fetched tokens array
-        console.log('Fetched tokens:', tokens);
-        setNfts(tokens);
-      } catch (err) {
-        setNfts([]);
-      }
-      setLoadingNfts(false);
-    };
-    if (isConnected && address) {
-      fetchNFTs();
-    }
-  }, [isConnected, address, isMinted]);
-
-  // Example mint handler for Stylus NFT contract
-  const handleMint = () => {
+  const handleTransfer = (target: string) => {
     writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: SampleNFTAbi,
-      functionName: "mint", // TODO: Update if your contract uses a different function
-      value: BigInt(0), // TODO: Set value if mint is payable
-    });
-  };
-
-  // Example Farcaster share handler
-  const handleShare = () => {
-    sdk.actions.composeCast({
-      text: `I just used the Farcaster + Arbitrum mini-app starter!`,
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      abi: TheArbitrumCoreAbi,
+      functionName: "pass_the_core",
+      args: [target],
     });
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-cyan-900 text-white p-6">
-      <main className="w-full max-w-md bg-slate-950/90 rounded-2xl shadow-xl p-8 flex flex-col items-center border border-cyan-400/10">
-        <h1 className="text-3xl font-bold mb-6 text-cyan-200">Farcaster + Arbitrum Mini-App Starter</h1>
-        {!isConnected ? (
-          <button
-            className="px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold"
-            disabled={status === 'pending' || !connectors.length}
-            onClick={() => connect({ connector: connectors[0] })}
-          >
-            {status === 'pending' ? 'Connecting...' : 'Connect Wallet'}
-          </button>
-        ) : (
-          <div className="flex flex-col items-center gap-4 w-full">
-            <div className="mb-2 text-cyan-100 text-sm w-full flex flex-col items-center">
-  <span className="block w-full truncate font-mono bg-slate-900/70 rounded px-2 py-1 text-cyan-200 text-xs border border-cyan-800/40" title={address} style={{maxWidth:'100%'}}>Connected: {address}</span>
-</div>
-            <button
-              className="px-6 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold w-full"
-              onClick={handleMint}
-              disabled={isPending || isConfirming || isMinted}
-            >
-              {isPending ? 'Minting...' : isConfirming ? 'Confirming...' : isMinted ? 'NFT Minted!' : 'Mint NFT'}
-            </button>
-            <button
-              className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold w-full"
-              onClick={handleShare}
-            >
-              Share to Farcaster
-            </button>
-          </div>
-        )}
-        {error && <div className="text-red-400 font-semibold text-sm mt-2">{error.message}</div>}
+    <div className="min-h-screen bg-[#07090f] text-slate-200 selection:bg-cyan-500/30 font-sans overflow-hidden">
+      {/* Background Effects */}
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,_rgba(0,180,216,0.05),_transparent)] pointer-events-none" />
 
-        {/* NFT Gallery */}
-        {isConnected && (
-          <div className="w-full mt-6">
-            {loadingNfts ? (
-              <div className="text-cyan-300 text-center">Loading your NFTs...</div>
-            ) : nfts.length > 0 ? (
+      <header className="fixed top-0 left-0 w-full p-4 flex justify-between items-center z-50 border-b border-white/5 bg-black/20 backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_8px_#06b6d4]" />
+          <span className="text-[10px] font-mono tracking-widest font-bold uppercase">Arbitrum_Core_v1.0</span>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 opacity-60">
+            {isConnected ? <Wifi className="w-3 h-3 text-green-500" /> : <WifiOff className="w-3 h-3 text-red-500" />}
+            <span className="text-[9px] font-mono uppercase tracking-tighter">
+              {isConnected ? 'Link_Established' : 'Offline'}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-md mx-auto pt-20 pb-24 px-6 flex flex-col min-h-screen">
+        {/* 3D Scene Section */}
+        <div className="relative h-[300px] -mt-4 mb-2">
+          <CoreThree heat={Math.min(heat, 1)} />
+
+          <AnimatePresence>
+            {isMelting && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-red-500/5 mix-blend-overlay pointer-events-none transition-colors"
+              />
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* HUD Panels */}
+        <div className="space-y-4 flex-grow">
+          <GlassPanel className="border-t-2 border-t-cyan-500/20">
+            <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className="text-xl font-semibold mb-2 text-cyan-100 text-center">Your Minted NFTs</h2>
-                <div className="flex flex-col gap-4">
-                  {nfts.map(nft => (
-                    <div key={nft.tokenId} className="bg-slate-800 rounded-xl p-4 flex flex-col items-center border border-cyan-800/30">
-                      <pre className="text-xs text-cyan-300 bg-slate-900 rounded p-2 mb-2 w-full overflow-x-auto">{JSON.stringify(nft, null, 2)}</pre>
-                      {nft.image && (
-                        <img src={nft.image} alt={nft.name} className="w-32 h-32 object-contain mb-2 rounded-lg border border-cyan-500/40" onError={e => { (e.target as HTMLImageElement).style.opacity = '0.3'; }} />
-                      )}
-                      <div className="font-bold text-cyan-200">{nft.name || `Token #${nft.tokenId}`}</div>
-                      <div className="text-cyan-100 text-xs mt-1 text-center">{nft.description}</div>
-                      <div className="text-cyan-400 text-xs mt-1 font-mono">Token ID: {nft.tokenId}</div>
-                    </div>
-                  ))}
-                </div>
+                <h1 className="text-2xl font-black tracking-tighter italic uppercase text-white -mb-1">The Core</h1>
+                <p className="text-[9px] font-mono text-cyan-500 tracking-[0.2em] font-bold">IDENTIFIER_BLOCK_ID_01</p>
+              </div>
+              <div className="text-right">
+                <span className="block text-[9px] font-mono opacity-40 uppercase tracking-widest">Global Entropy</span>
+                <span className="text-lg font-mono font-bold text-cyan-400">{(heat * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+
+            <MeltdownTimer blocksRemaining={blocksRemaining} isMelting={isMelting} />
+          </GlassPanel>
+
+          <GlassPanel>
+            {!isConnected ? (
+              <div className="py-2 text-center">
+                <p className="text-xs font-mono opacity-50 mb-4 tracking-tighter">INITIALIZE_ENCRYPTION_LINK_TO_BEGIN</p>
+                <button
+                  onClick={() => connect({ connector: connectors[0] })}
+                  className="w-full py-3 bg-white text-black font-black text-xs tracking-[0.3em] uppercase hover:bg-cyan-400 transition-colors"
+                >
+                  Establish Link
+                </button>
               </div>
             ) : (
-              <div className="text-cyan-300 text-center">You haven't minted any NFTs yet.</div>
+              <div className="space-y-6">
+                {/* Current Holder Info */}
+                <div className="flex items-center justify-between p-3 bg-white/5 rounded-md border border-white/5">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-cyan-500/10 rounded border border-cyan-500/20">
+                      <User className="w-4 h-4 text-cyan-400" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-mono opacity-40 uppercase">Current_Carrier</span>
+                      <span className="text-[11px] font-mono font-bold truncate max-w-[150px]">
+                        {isOwner ? 'YOU (AUTHORIZED)' : currentHolder || 'SCANNING...'}
+                      </span>
+                    </div>
+                  </div>
+                  <Shield className={`w-4 h-4 ${isOwner ? 'text-green-500' : 'text-white/20'}`} />
+                </div>
+
+                {isOwner ? (
+                  <div className="space-y-4 pt-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Activity className="w-3 h-3 text-cyan-400" />
+                      <span className="text-[10px] font-mono font-bold tracking-widest uppercase">Initiate_Handoff</span>
+                    </div>
+                    <TransferHUD onTransfer={handleTransfer} isPending={isPending || isConfirming} />
+                    <p className="text-[9px] font-mono opacity-40 leading-relaxed italic text-center px-4">
+                      "Transfer ownership to a known FID or ENS resolver. Avoid previous holders to bypass anti-cycling protocols."
+                    </p>
+                  </div>
+                ) : (
+                  <div className="py-4 text-center border border-dashed border-white/10 rounded-md">
+                    <p className="text-[10px] font-mono opacity-50 uppercase tracking-tighter mb-1">Waiting for transmission...</p>
+                    <p className="text-[9px] font-mono opacity-30 italic px-6 leading-tight">
+                      Only the current carrier can initiate a core relocation protocol.
+                    </p>
+                  </div>
+                )}
+              </div>
             )}
+          </GlassPanel>
+
+          {/* Stats Footer */}
+          <div className="grid grid-cols-2 gap-4">
+            <GlassPanel className="flex items-center gap-3 py-3">
+              <TrendingUp className="w-4 h-4 text-cyan-400" />
+              <div className="flex flex-col">
+                <span className="text-[8px] font-mono opacity-50 uppercase">Accumulated_Pts</span>
+                <span className="text-sm font-mono font-bold">{userPoints?.toString() || '0'}</span>
+              </div>
+            </GlassPanel>
+            <GlassPanel className="flex items-center gap-3 py-3">
+              <Activity className="w-4 h-4 text-cyan-400" />
+              <div className="flex flex-col">
+                <span className="text-[8px] font-mono opacity-50 uppercase">Session_Load</span>
+                <span className="text-sm font-mono font-bold">{blocksHeld}B</span>
+              </div>
+            </GlassPanel>
           </div>
-        )}
+        </div>
       </main>
-      <footer className="w-full fixed bottom-0 left-0 bg-gradient-to-b from-slate-900/90 to-slate-950/95 border-t border-slate-800 flex flex-col items-center py-2 z-50">
-        <img src="/arbitrum.png" alt="Arbitrum Logo" className="h-6 mb-1" />
-        <div className="text-xs text-slate-400 mt-1">
-          Made with <span className="text-red-500">❤️</span> by the
-          <a
-            href="https://arbitrum.foundation"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-cyan-400 hover:underline ml-1 font-medium"
-          >
-            Arbitrum DevRel Team
-          </a>
+
+      <footer className="fixed bottom-0 left-0 w-full p-6 pointer-events-none z-10">
+        <div className="max-w-md mx-auto flex justify-between items-end">
+          <div className="flex flex-col gap-1">
+            <img src="/arbitrum.png" alt="Arb" className="w-4 h-4 opacity-40" />
+            <span className="text-[8px] font-mono opacity-20 uppercase tracking-[0.4em]">Proprietary_Tech</span>
+          </div>
+          <div className="text-right opacity-30">
+            <p className="text-[8px] font-mono grayscale italic">"Pass_Before_Ignition"</p>
+            <p className="text-[7px] font-mono uppercase tracking-tighter">© 2026 PsyLabs Industrial Division</p>
+          </div>
         </div>
       </footer>
     </div>
