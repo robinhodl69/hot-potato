@@ -1,95 +1,511 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+/**
+ * THE ARBITRUM CORE - Design System
+ * Style: "Stellar Core Command"
+ * 
+ * Atomic Design Structure:
+ * 1. Design Tokens (CSS Variables)
+ * 2. Base Styles (Reset, Typography)
+ * 3. Atoms (Buttons, Inputs, Labels)
+ * 4. Molecules (Panels, Cards, HUD Elements)
+ * 5. Utilities (Glow, Animations)
+ */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ========================================
+   1. DESIGN TOKENS (CSS Custom Properties)
+   ======================================== */
 :root {
-  font-family: 'Inter', sans-serif;
+  /* Background Scale */
+  --color-bg-primary: #050505;
+  --color-bg-secondary: #0a0a0a;
+  --color-bg-tertiary: #111111;
+
+  /* State: Stable (Cyan) */
+  --color-stable: #00ffff;
+  --color-stable-light: #66ffff;
+  --color-stable-dark: #00cccc;
+  --color-stable-glow: rgba(0, 255, 255, 0.3);
+
+  /* State: Meltdown (Red/Orange) */
+  --color-meltdown: #ff2200;
+  --color-meltdown-light: #ff4422;
+  --color-meltdown-dark: #cc1a00;
+  --color-meltdown-glow: rgba(255, 50, 0, 0.4);
+
+  /* Neutral Scale */
+  --color-neutral-50: #f0f0f0;
+  --color-neutral-100: #e0e0e0;
+  --color-neutral-400: #888888;
+  --color-neutral-600: #444444;
+  --color-neutral-800: #222222;
+
+  /* Typography */
+  --font-heading: 'Orbitron', sans-serif;
+  --font-data: 'Rajdhani', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing (8px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+
+  /* Border Radius */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 300ms ease;
+}
+
+/* ========================================
+   2. BASE STYLES (Reset & Foundations)
+   ======================================== */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  height: 100dvh;
 }
 
 body {
-  @apply bg-[#07090f] text-slate-200 overflow-x-hidden;
-  cursor: crosshair;
-}
-
-/* Digital Scanline Effect */
-body::before {
-  content: " ";
-  display: block;
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-  z-index: 1000;
-  background-size: 100% 2px, 3px 100%;
-  pointer-events: none;
-}
-
-/* Moving Scanline */
-body::after {
-  content: " ";
-  display: block;
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-  background: rgba(18, 16, 16, 0.1);
-  opacity: 0;
-  z-index: 1001;
-  pointer-events: none;
-  animation: flicker 0.15s infinite;
-}
-
-@keyframes flicker {
-  0% { opacity: 0.1; }
-  100% { opacity: 0.2; }
-}
-
-@keyframes scanner {
-  from { top: 0; }
-  to { top: 100%; }
-}
-
-.scanner-line {
-  position: fixed;
-  top: 0;
-  left: 0;
+  height: 100%;
+  height: 100dvh;
   width: 100%;
-  height: 2px;
-  background: rgba(0, 229, 255, 0.1);
-  z-index: 1002;
-  pointer-events: none;
-  animation: scanner 4s linear infinite;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--color-bg-primary);
+  color: var(--color-neutral-50);
+  font-family: var(--font-data);
+  cursor: crosshair;
+  /* PWA Fullscreen */
+  position: fixed;
+  inset: 0;
+  /* iPhone Safe Area */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
-/* Custom Scrollbar */
+#root {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ========================================
+   3. ATOMS - Typography
+   ======================================== */
+h1,
+h2,
+h3,
+.heading {
+  font-family: var(--font-heading);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  margin: 0;
+}
+
+.text-display {
+  font-size: 2.5rem;
+  letter-spacing: 0.5em;
+  line-height: 1.1;
+}
+
+.text-data {
+  font-family: var(--font-data);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+.text-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.text-micro {
+  font-size: 0.625rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* ========================================
+   3. ATOMS - Buttons
+   ======================================== */
+.btn {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  padding: var(--space-4) var(--space-6);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary {
+  background: var(--color-stable);
+  color: var(--color-bg-primary);
+  box-shadow: 0 0 30px var(--color-stable-glow);
+}
+
+.btn-primary:hover {
+  background: white;
+  box-shadow: 0 0 50px var(--color-stable-glow);
+  transform: translateY(-2px);
+}
+
+.btn-danger {
+  background: var(--color-meltdown);
+  color: white;
+  box-shadow: 0 0 30px var(--color-meltdown-glow);
+}
+
+.btn-danger:hover {
+  background: var(--color-meltdown-light);
+  box-shadow: 0 0 50px var(--color-meltdown-glow);
+  transform: translateY(-2px);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ========================================
+   4. MOLECULES - Glass Panels
+   ======================================== */
+.glass-panel {
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+}
+
+.glass-panel-stable {
+  border-color: rgba(0, 255, 255, 0.15);
+  box-shadow:
+    0 0 20px rgba(0, 255, 255, 0.05),
+    inset 0 0 30px rgba(0, 255, 255, 0.02);
+}
+
+.glass-panel-meltdown {
+  border-color: rgba(255, 62, 0, 0.2);
+  box-shadow:
+    0 0 20px rgba(255, 62, 0, 0.1),
+    inset 0 0 30px rgba(255, 62, 0, 0.03);
+}
+
+/* ========================================
+   4. MOLECULES - HUD Elements
+   ======================================== */
+.hud-label {
+  font-family: var(--font-data);
+  font-size: 0.625rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  opacity: 0.4;
+}
+
+.hud-value {
+  font-family: var(--font-data);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.hud-value-stable {
+  color: var(--color-stable);
+}
+
+.hud-value-meltdown {
+  color: var(--color-meltdown);
+}
+
+/* ========================================
+   5. UTILITIES - Glow Effects
+   ======================================== */
+.glow-stable {
+  text-shadow:
+    0 0 20px var(--color-stable-glow),
+    0 0 40px var(--color-stable-glow);
+}
+
+.glow-meltdown {
+  text-shadow:
+    0 0 20px var(--color-meltdown-glow),
+    0 0 40px var(--color-meltdown-glow);
+}
+
+.neon-title {
+  text-shadow:
+    0 0 10px rgba(0, 255, 255, 0.7),
+    0 0 20px rgba(0, 255, 255, 0.4),
+    0 0 40px rgba(0, 255, 255, 0.2);
+  animation: neon-flicker 3s infinite alternate;
+}
+
+.neon-title-danger {
+  text-shadow:
+    0 0 10px rgba(255, 62, 0, 0.7),
+    0 0 20px rgba(255, 62, 0, 0.4),
+    0 0 40px rgba(255, 62, 0, 0.2);
+  animation: neon-flicker 2s infinite alternate;
+}
+
+/* ========================================
+   5. UTILITIES - Overlays
+   ======================================== */
+.scanline-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+  background-size: 100% 2px, 3px 100%;
+  opacity: 0.3;
+}
+
+/* ========================================
+   5. UTILITIES - Animations
+   ======================================== */
+@keyframes neon-flicker {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  92% {
+    opacity: 1;
+  }
+
+  93% {
+    opacity: 0.8;
+  }
+
+  94% {
+    opacity: 1;
+  }
+
+  95% {
+    opacity: 0.9;
+  }
+
+  96% {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes shake {
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  10% {
+    transform: translate(-2px, -1px);
+  }
+
+  20% {
+    transform: translate(2px, 1px);
+  }
+
+  30% {
+    transform: translate(-1px, 2px);
+  }
+
+  40% {
+    transform: translate(1px, -2px);
+  }
+
+  50% {
+    transform: translate(-2px, 1px);
+  }
+
+  60% {
+    transform: translate(2px, -1px);
+  }
+
+  70% {
+    transform: translate(-1px, -2px);
+  }
+
+  80% {
+    transform: translate(1px, 2px);
+  }
+
+  90% {
+    transform: translate(-2px, -1px);
+  }
+}
+
+.shake {
+  animation: shake 0.15s infinite;
+}
+
+/* ========================================
+   5. UTILITIES - Scrollbar
+   ======================================== */
 ::-webkit-scrollbar {
   width: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #07090f;
+  background: var(--color-bg-primary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 10px;
+  background: var(--color-neutral-400);
+  border-radius: 0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #06b6d4;
+  background: var(--color-stable);
 }
 
-/* Typography Overrides */
-h1, h2, h3 {
-  font-family: 'Inter', sans-serif;
-  letter-spacing: -0.05em;
+/* ========================================
+   6. STATE MODIFIERS - Crisis Mode
+   ======================================== */
+
+/* Body state class applied by AppRouter */
+.state-stable {
+  /* Default stable state */
 }
 
-.font-mono {
-  font-family: 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+.state-meltdown {
+  /* Global meltdown effects */
+}
+
+.state-meltdown .glass-panel {
+  animation: crisis-pulse 1s ease-in-out infinite;
+}
+
+.state-meltdown::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background: radial-gradient(ellipse at center,
+      transparent 40%,
+      rgba(255, 50, 0, 0.08) 100%);
+  animation: crisis-vignette 2s ease-in-out infinite;
+}
+
+@keyframes crisis-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 50, 0, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 20px 2px rgba(255, 50, 0, 0.2);
+  }
+}
+
+@keyframes crisis-vignette {
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Critical state (>90% heat) */
+.state-critical {
+  animation: screen-shake 0.3s infinite;
+}
+
+@keyframes screen-shake {
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  10% {
+    transform: translate(-1px, 0);
+  }
+
+  20% {
+    transform: translate(1px, -1px);
+  }
+
+  30% {
+    transform: translate(-1px, 1px);
+  }
+
+  40% {
+    transform: translate(1px, 0);
+  }
+
+  50% {
+    transform: translate(-1px, -1px);
+  }
+
+  60% {
+    transform: translate(1px, 1px);
+  }
+
+  70% {
+    transform: translate(0, -1px);
+  }
+
+  80% {
+    transform: translate(-1px, 0);
+  }
+
+  90% {
+    transform: translate(1px, 1px);
+  }
+}
+
+/* Eligibility indicator colors */
+.eligible {
+  color: var(--color-stable);
+  border-color: var(--color-stable);
+}
+
+.ineligible {
+  color: var(--color-meltdown);
+  border-color: var(--color-meltdown);
 }

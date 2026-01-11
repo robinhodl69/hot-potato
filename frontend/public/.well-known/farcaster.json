@@ -1,16 +1,24 @@
 {
   "frame": {
     "version": "1",
-    "name": "Farcaster Arbitrum Mini-App Starter",
-    "iconUrl": "YOUR_APP_IMAGE_URL",
-    "homeUrl": "YOUR_APP_URL",
-    "splashImageUrl": "YOUR_APP_IMAGE_URL",
-    "splashBackgroundColor": "YOUR_APP_COLOR",
-    "subtitle": "Starter template for building your own Farcaster Mini-App integrated with Arbitrum Stylus.",
-    "description": "Starter template for building your own Farcaster Mini-App integrated with Arbitrum Stylus.",
-    "primaryCategory": "education",
-    "tags": ["arbitrum", "farcaster", "miniapp", "starter"],
-    "requiredChains": ["eip155:42161"],
+    "name": "The Arbitrum Core",
+    "iconUrl": "https://hot-potato-frontend-git-main-robinhodl69s-projects.vercel.app/splash.png",
+    "homeUrl": "https://hot-potato-frontend-git-main-robinhodl69s-projects.vercel.app",
+    "splashImageUrl": "https://hot-potato-frontend-git-main-robinhodl69s-projects.vercel.app/splash.png",
+    "splashBackgroundColor": "#050505",
+    "subtitle": "Pass the Core before it melts!",
+    "description": "A Hot Potato game on Arbitrum. Hold the Core to earn points, but pass it before meltdown burns your balance.",
+    "primaryCategory": "gaming",
+    "tags": [
+      "arbitrum",
+      "farcaster",
+      "miniapp",
+      "gaming",
+      "nft"
+    ],
+    "requiredChains": [
+      "eip155:421614"
+    ],
     "requiredCapabilities": [
       "actions.composeCast",
       "wallet.getEthereumProvider"
