@@ -1,4 +1,9 @@
 {
+  "accountAssociation": {
+    "header": "eyJmaWQiOjMzMjA2NSwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDNiNzYwODg4NjAwZDcxRmFjN0I4Nzg3M2UyMTMzNEQ4OWMwNWE3OGEifQ",
+    "payload": "eyJkb21haW4iOiJob3QtcG90YXRvLWZyb250ZW5kLnZlcmNlbC5hcHAifQ",
+    "signature": "EZmeV3UKz6SKqhQoU1vDYqxChEJVB4k6GDcqlpFtRK8AG6zM2XDQ10wOMOpBwD0/hA4XOnnIKoEKizpMn3LqPhw="
+  },
   "frame": {
     "version": "1",
     "name": "The Arbitrum Core",
@@ -8,7 +13,7 @@
     "splashBackgroundColor": "#050505",
     "subtitle": "Pass the Core before it melts!",
     "description": "A Hot Potato game on Arbitrum. Hold the Core to earn points, but pass it before meltdown burns your balance.",
-    "primaryCategory": "gaming",
+    "primaryCategory": "games",
     "tags": [
       "arbitrum",
       "farcaster",
