@@ -9,7 +9,11 @@ import { WagmiProvider } from "wagmi";
 import AppRouter from "./AppRouter.tsx";
 import { config } from "./wagmi.ts";
 
+import { sdk } from "@farcaster/miniapp-sdk";
 import "./index.css";
+
+// Signal Farcaster that the mini-app is ready to be displayed
+sdk.actions.ready();
 
 const queryClient = new QueryClient();
 
