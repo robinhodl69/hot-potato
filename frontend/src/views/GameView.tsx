@@ -204,6 +204,18 @@ export default function GameView() {
         connect({ connector: connectors[0] });
     };
 
+    const handleShareWarpcastAction = () => {
+        const text = `⚡ I just passed The @arbitrum Core to ${lastRecipientHandle ? `@${lastRecipientHandle}` : formatAddress(targetAddress)}! Keep it stable and pass it on. 🛰️\n\nPlay here: https://farcaster.xyz/miniapps/eiZiilnpq2Gv/the-arbitrum-core`;
+        const url = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}`;
+        try { sdk.actions.openUrl(url); } catch { window.open(url, '_blank'); }
+    };
+
+    const handleShareTwitterAction = () => {
+        const text = `⚡ I just passed The Arbitrum Core to ${lastRecipientHandle ? `@${lastRecipientHandle}` : formatAddress(targetAddress)}! Keep it stable and pass it on. @arbitrum 🛰️\n\nPlay here: https://farcaster.xyz/miniapps/eiZiilnpq2Gv/the-arbitrum-core`;
+        const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
+    };
+
     // ========================
     // RENDER
     // ========================
@@ -400,24 +412,20 @@ export default function GameView() {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2">
-                                    <a
-                                        href={`https://warpcast.com/~/compose?text=${encodeURIComponent(`⚡ I just passed The @arbitrum Core to ${lastRecipientHandle ? `@${lastRecipientHandle}` : formatAddress(targetAddress)}! Keep it stable and pass it on. 🛰️\n\nPlay here: https://farcaster.xyz/miniapps/eiZiilnpq2Gv/the-arbitrum-core`)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                    <button
+                                        onClick={handleShareWarpcastAction}
                                         className="py-2 bg-purple-600/20 border border-purple-500/50 rounded flex items-center justify-center gap-2 text-[10px] font-bold text-purple-400 hover:bg-purple-600/30 transition-all"
                                     >
                                         <Share2 className="w-3 h-3" />
                                         WARPCAST
-                                    </a>
-                                    <a
-                                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`⚡ I just passed The Arbitrum Core to ${lastRecipientHandle ? `@${lastRecipientHandle}` : formatAddress(targetAddress)}! Keep it stable and pass it on. @arbitrum 🛰️\n\nPlay here: https://farcaster.xyz/miniapps/eiZiilnpq2Gv/the-arbitrum-core`)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                    </button>
+                                    <button
+                                        onClick={handleShareTwitterAction}
                                         className="py-2 bg-blue-400/10 border border-blue-400/30 rounded flex items-center justify-center gap-2 text-[10px] font-bold text-blue-400 hover:bg-blue-400/20 transition-all"
                                     >
                                         <Twitter className="w-3 h-3" />
                                         TWITTER / X
-                                    </a>
+                                    </button>
                                 </div>
                             </motion.div>
                         )}
