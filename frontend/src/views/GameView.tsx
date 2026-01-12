@@ -116,6 +116,7 @@ export default function GameView() {
     // ACTIONS
     // ========================
     const [targetAddress, setTargetAddress] = useState('');
+    const [lastRecipientHandle, setLastRecipientHandle] = useState<string | null>(null);
     const [isResolving, setIsResolving] = useState(false);
     const [resolveError, setResolveError] = useState<string | null>(null);
 
@@ -139,8 +140,9 @@ export default function GameView() {
         // Handle Resolution
         if (finalAddress.startsWith('@')) {
             setIsResolving(true);
+            const username = finalAddress.startsWith('@') ? finalAddress.slice(1) : finalAddress;
+            setLastRecipientHandle(username);
             try {
-                const username = finalAddress.slice(1);
                 const response = await fetch(`https://searchcaster.xyz/api/profiles?username=${username}`);
                 const data = await response.json();
 
@@ -156,6 +158,8 @@ export default function GameView() {
                 return;
             }
             setIsResolving(false);
+        } else {
+            setLastRecipientHandle(null);
         }
 
         if (!finalAddress.startsWith('0x')) {
@@ -301,10 +305,10 @@ export default function GameView() {
                                 }}
                                 disabled={isResolving || isPending || isConfirming}
                                 className={`w-full px-4 py-3 bg-black/40 backdrop-blur-sm border rounded-sm font-data text-sm placeholder:opacity-40 focus:outline-none transition-all ${resolveError
-                                        ? 'border-red-500/50 shadow-[0_0_10px_rgba(255,0,0,0.2)]'
-                                        : isMelting
-                                            ? 'border-meltdown/30 focus:border-meltdown/80 focus:shadow-glow-meltdown'
-                                            : 'border-stable/20 focus:border-stable/60 focus:shadow-glow-stable'
+                                    ? 'border-red-500/50 shadow-[0_0_10px_rgba(255,0,0,0.2)]'
+                                    : isMelting
+                                        ? 'border-meltdown/30 focus:border-meltdown/80 focus:shadow-glow-meltdown'
+                                        : 'border-stable/20 focus:border-stable/60 focus:shadow-glow-stable'
                                     }`}
                             />
 
@@ -373,7 +377,7 @@ export default function GameView() {
 
                                 <div className="grid grid-cols-2 gap-2">
                                     <a
-                                        href={`https://warpcast.com/~/compose?text=${encodeURIComponent(`⚡ I just passed The @arbitrum Core! The network stability is holding.\n\nPlay here: https://hot-potato-frontend.vercel.app`)}`}
+                                        href={`https://warpcast.com/~/compose?text=${encodeURIComponent(`⚡ I just passed The @arbitrum Core to ${lastRecipientHandle ? `@${lastRecipientHandle}` : formatAddress(targetAddress)}! Keep it stable and pass it on. 🛰️\n\nPlay here: https://farcaster.xyz/miniapps/eiZiilnpq2Gv/the-arbitrum-core`)}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="py-2 bg-purple-600/20 border border-purple-500/50 rounded flex items-center justify-center gap-2 text-[10px] font-bold text-purple-400 hover:bg-purple-600/30 transition-all"
@@ -382,7 +386,7 @@ export default function GameView() {
                                         WARPCAST
                                     </a>
                                     <a
-                                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`⚡ I just passed The Arbitrum Core! The network stability is holding. @arbitrum\n\nPlay here: https://hot-potato-frontend.vercel.app`)}`}
+                                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`⚡ I just passed The Arbitrum Core to ${lastRecipientHandle ? `@${lastRecipientHandle}` : targetAddress}! Keep it stable and pass it on. @arbitrum 🛰️\n\nPlay here: https://farcaster.xyz/miniapps/eiZiilnpq2Gv/the-arbitrum-core`)}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="py-2 bg-blue-400/10 border border-blue-400/30 rounded flex items-center justify-center gap-2 text-[10px] font-bold text-blue-400 hover:bg-blue-400/20 transition-all"

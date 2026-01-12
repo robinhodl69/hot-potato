@@ -245,7 +245,7 @@ export default function HomeView() {
                                     whileTap={{ scale: 0.98 }}
                                     onClick={() => {
                                         play('click');
-                                        navigate('/game');
+                                        navigate('/core');
                                     }}
                                     className="w-full py-5 font-black uppercase text-sm overflow-hidden border-2 transition-all duration-300 bg-cyan-500 border-cyan-400 text-black shadow-[0_0_20px_rgba(0,255,255,0.4)] relative group"
                                     style={{

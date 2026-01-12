@@ -200,6 +200,7 @@ function AppContent() {
                     <div className={`relative z-20 h-full ${isHomePage ? '' : 'pb-20'}`} style={{ paddingLeft: isHomePage ? 0 : '1rem', paddingRight: isHomePage ? 0 : '1rem' }}>
                         <Routes>
                             <Route path="/" element={<HomeView />} />
+                            <Route path="/game" element={<GameView />} />
                             <Route path="/core" element={<GameView />} />
                             <Route path="/pulse" element={<AnalyticsView />} />
                             <Route path="/vault" element={<VaultView />} />

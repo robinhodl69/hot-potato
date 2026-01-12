@@ -14,13 +14,15 @@ export default function OperatorProfile({ address, isPreviousHolder, isMe, farca
 
     // Unified Share Logic
     const handleShareWarpcast = () => {
-        const text = `⚡ I just passed The @arbitrum Core to ${address}! The network stability is holding.\n\nPlay here: https://hot-potato-frontend.vercel.app`;
+        const recipient = farcasterUser?.username ? `@${farcasterUser.username}` : formatAddress(safeAddress);
+        const text = `⚡ I just passed The @arbitrum Core to ${recipient}! Keep it stable and pass it on. 🛰️\n\nPlay here: https://farcaster.xyz/miniapps/eiZiilnpq2Gv/the-arbitrum-core`;
         const url = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}`;
         try { sdk.actions.openUrl(url); } catch { window.open(url, '_blank'); }
     };
 
     const handleShareTwitter = () => {
-        const text = `⚡ I just passed The Arbitrum Core to ${address}! The network stability is holding. @arbitrum\n\nPlay here: https://hot-potato-frontend.vercel.app`;
+        const recipient = farcasterUser?.username ? `@${farcasterUser.username}` : safeAddress;
+        const text = `⚡ I just passed The Arbitrum Core to ${recipient}! Keep it stable and pass it on. @arbitrum 🛰️\n\nPlay here: https://farcaster.xyz/miniapps/eiZiilnpq2Gv/the-arbitrum-core`;
         const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
         window.open(url, '_blank');
     };
