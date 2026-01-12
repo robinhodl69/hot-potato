@@ -11,10 +11,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, AlertTriangle, User, Flame, Target } from 'lucide-react';
+import { Zap, AlertTriangle, User, Flame, Target, CircleHelp } from 'lucide-react';
 import { sdk } from '@farcaster/miniapp-sdk';
 
 import CoreVisual from '../components/core/CoreVisual';
+import HowToPlayModal from '../components/hud/HowToPlayModal';
+import OperatorProfile from '../components/identity/OperatorProfile';
 import { useSynth } from '../hooks/useSynth';
 import { useGameState } from '../AppRouter';
 import TheArbitrumCoreAbi from '../abi/TheArbitrumCore.json';
@@ -28,6 +30,7 @@ export default function GameView() {
     const { play } = useSynth();
     const { heat, isMelting, currentHolder, previousHolder, blockNumber } = useGameState();
     const lastSonarTime = useRef(0);
+    const [isHelpOpen, setIsHelpOpen] = useState(false);
 
     // ========================
     // CONTRACT READS
@@ -55,7 +58,7 @@ export default function GameView() {
     // ========================
     const isOwner = address?.toLowerCase() === currentHolder?.toLowerCase();
     const isPreviousHolder = address?.toLowerCase() === previousHolder?.toLowerCase();
-    const canGrab = isConnected && !isOwner && !isPreviousHolder;
+    const canGrab = isConnected && !isOwner && (!isPreviousHolder || isMelting);
 
     // Stability calculation: (SAFE_LIMIT - blocksHeld) / SAFE_LIMIT * 100
     const stabilityPercent = Math.max(0, Math.min(100, (1 - heat) * 100));
@@ -77,13 +80,25 @@ export default function GameView() {
     // EFFECTS
     // ========================
 
-    // SDK init
+    // SDK init & Context
+    const [farcasterUser, setFarcasterUser] = useState<{ username?: string, pfpUrl?: string } | null>(null);
+
     useEffect(() => {
-        try {
-            sdk.actions.ready();
-        } catch {
-            console.warn('Running outside Farcaster');
-        }
+        const initSdk = async () => {
+            try {
+                sdk.actions.ready();
+                const context = await sdk.context;
+                if (context?.user) {
+                    setFarcasterUser({
+                        username: context.user.username,
+                        pfpUrl: context.user.pfpUrl
+                    });
+                }
+            } catch (err) {
+                console.warn('Running outside Farcaster or failed to get context', err);
+            }
+        };
+        initSdk();
     }, []);
 
     // Sonar effect when owner and melting
@@ -134,12 +149,25 @@ export default function GameView() {
     return (
         <div className="h-full flex flex-col bg-transparent">
             {/* HEADER - Connection Status */}
-            <header className="flex-shrink-0 px-4 py-3 flex justify-between items-center border-b border-white/5">
+            <header className="relative flex-shrink-0 px-4 py-3 flex justify-between items-center border-b border-white/5">
+                {/* Left: Status */}
                 <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${isMelting ? 'bg-meltdown animate-pulse' : 'bg-stable'}`} />
-                    <span className="text-micro opacity-60">CORE_DASHBOARD</span>
+                    <span className={`text-micro font-bold tracking-wider ${isMelting ? 'text-meltdown' : 'text-stable'}`}>
+                        CORE_DASHBOARD
+                    </span>
                 </div>
-                <div className="text-micro opacity-40">
+
+                {/* Center: HOW TO PLAY */}
+                <button
+                    onClick={() => setIsHelpOpen(true)}
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-3 py-1 bg-stable text-black text-[10px] font-bold tracking-widest rounded hover:scale-105 transition-transform shadow-[0_0_10px_rgba(0,255,255,0.4)]"
+                >
+                    HOW TO PLAY
+                </button>
+
+                {/* Right: Address */}
+                <div className={`text-micro font-bold ${isConnected ? (isMelting ? 'text-meltdown' : 'text-stable') : 'text-white/50'}`}>
                     {isConnected ? formatAddress(address) : 'DISCONNECTED'}
                 </div>
             </header>
@@ -152,7 +180,10 @@ export default function GameView() {
             </div>
 
             {/* BOTTOM SECTION - HUD Panels */}
-            <div className="flex-1 flex flex-col px-4 space-y-3 relative z-30 bg-gradient-to-t from-black/80 via-black/50 to-transparent pt-4">
+            <div
+                className="flex-1 flex flex-col relative z-30 bg-gradient-to-t from-black/80 via-black/50 to-transparent pt-4"
+                style={{ gap: '1rem' }}
+            >
                 {/* Stability + Timer Row */}
                 <div className={`glass-panel ${isMelting ? 'glass-panel-meltdown' : 'glass-panel-stable'} p-4`}>
                     <div className="flex items-center justify-between mb-2">
@@ -189,7 +220,7 @@ export default function GameView() {
                 </div>
 
                 {/* CONTROL PANEL */}
-                <div className="flex-shrink-0 p-4 space-y-3" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+                <div className="flex-shrink-0" style={{ gap: '1rem', display: 'flex', flexDirection: 'column', paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
 
                     {/* Stats Row */}
                     <div className={`glass-panel ${isMelting ? 'glass-panel-meltdown' : 'glass-panel-stable'} p-4`}>
@@ -246,25 +277,26 @@ export default function GameView() {
                             </button>
                         </div>
                     ) : canGrab ? (
-                        <button
-                            onClick={handleGrabCore}
-                            disabled={isPending || isConfirming}
-                            className="btn btn-primary w-full"
-                        >
-                            {isPending || isConfirming ? 'ACQUIRING...' : 'GRAB CORE'}
-                        </button>
-                    ) : (
-                        <div className="glass-panel glass-panel-stable p-4 text-center">
-                            <div className="text-micro opacity-40 mb-1">
-                                {isPreviousHolder ? 'ANTI-GAMING: COOLDOWN ACTIVE' : 'AWAITING CORE RELEASE'}
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-center gap-2 text-stable animate-pulse">
+                                <AlertTriangle className="w-3 h-3" />
+                                <span className="text-[10px] font-bold tracking-widest uppercase">Core Vulnerable // Initiate Seizure</span>
                             </div>
-                            <div className="text-data text-xs opacity-70">
-                                {isPreviousHolder
-                                    ? 'You were the previous holder. Wait for another transfer.'
-                                    : `Current operator: ${formatAddress(currentHolder)}`
-                                }
-                            </div>
+                            <button
+                                onClick={handleGrabCore}
+                                disabled={isPending || isConfirming}
+                                className="btn btn-primary w-full shadow-[0_0_20px_rgba(0,255,255,0.3)] animate-pulse"
+                            >
+                                {isPending || isConfirming ? 'ACQUIRING...' : 'GRAB CORE'}
+                            </button>
                         </div>
+                    ) : (
+                        <OperatorProfile
+                            address={currentHolder}
+                            isPreviousHolder={isPreviousHolder || false}
+                            isMe={false}
+                            farcasterUser={farcasterUser}
+                        />
                     )}
 
                     {/* Success Toast */}
@@ -282,6 +314,8 @@ export default function GameView() {
                     </AnimatePresence>
                 </div>
             </div>
+
+            <HowToPlayModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
         </div>
     );
 }

@@ -215,6 +215,182 @@ h3,
 }
 
 /* ========================================
+   4. MOLECULES - HUD Cards (Enhanced)
+   ======================================== */
+.hud-card {
+  position: relative;
+  background: rgba(8, 8, 8, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-normal);
+}
+
+.hud-card-stable {
+  border-color: rgba(0, 255, 255, 0.2);
+  box-shadow:
+    0 0 25px rgba(0, 255, 255, 0.08),
+    inset 0 0 40px rgba(0, 255, 255, 0.02);
+}
+
+.hud-card-meltdown {
+  border-color: rgba(255, 62, 0, 0.25);
+  box-shadow:
+    0 0 25px rgba(255, 62, 0, 0.12),
+    inset 0 0 40px rgba(255, 62, 0, 0.03);
+}
+
+.hud-card-highlight {
+  animation: hud-pulse 2s ease-in-out infinite;
+}
+
+@keyframes hud-pulse {
+
+  0%,
+  100% {
+    box-shadow:
+      0 0 25px rgba(0, 255, 255, 0.1),
+      inset 0 0 40px rgba(0, 255, 255, 0.02);
+  }
+
+  50% {
+    box-shadow:
+      0 0 40px rgba(0, 255, 255, 0.2),
+      inset 0 0 60px rgba(0, 255, 255, 0.04);
+  }
+}
+
+.state-meltdown .hud-card-highlight {
+  animation: hud-pulse-danger 1.5s ease-in-out infinite;
+}
+
+@keyframes hud-pulse-danger {
+
+  0%,
+  100% {
+    box-shadow:
+      0 0 25px rgba(255, 62, 0, 0.15),
+      inset 0 0 40px rgba(255, 62, 0, 0.03);
+  }
+
+  50% {
+    box-shadow:
+      0 0 50px rgba(255, 62, 0, 0.25),
+      inset 0 0 60px rgba(255, 62, 0, 0.05);
+  }
+}
+
+/* Stat Card Variant */
+.hud-card-stat {
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.stat-value {
+  font-family: var(--font-heading);
+  font-size: 2.5rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.stat-value-lg {
+  font-size: 3.5rem;
+}
+
+/* ========================================
+   4. MOLECULES - View Headers
+   ======================================== */
+.view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.view-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+/* ========================================
+   4. MOLECULES - Game Status Panel
+   ======================================== */
+.game-status-panel {
+  background: rgba(10, 10, 10, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.game-status-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 255, 255, 0.3) 50%, transparent 100%);
+}
+
+.game-status-panel-stable {
+  border-color: rgba(0, 255, 255, 0.15);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.05);
+}
+
+.game-status-panel-stable::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 255, 255, 0.4) 50%, transparent 100%);
+}
+
+.game-status-panel-meltdown {
+  border-color: rgba(255, 62, 0, 0.2);
+  box-shadow: 0 0 20px rgba(255, 62, 0, 0.08);
+}
+
+.game-status-panel-meltdown::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 62, 0, 0.4) 50%, transparent 100%);
+}
+
+.game-status-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-data);
+}
+
+.game-status-item {
+  flex: 1;
+  text-align: center;
+}
+
+.game-status-label {
+  display: block;
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  opacity: 0.4;
+  margin-bottom: 0.25rem;
+}
+
+.game-status-value {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.game-status-divider {
+  width: 1px;
+  height: 2.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 1rem;
+}
+
+/* ========================================
    4. MOLECULES - HUD Elements
    ======================================== */
 .hud-label {
@@ -508,4 +684,95 @@ h3,
 .ineligible {
   color: var(--color-meltdown);
   border-color: var(--color-meltdown);
+}
+
+/* ========================================
+   5. VISUAL EFFECTS (Industrial Sci-Fi)
+   ======================================== */
+
+/* Vignette Overlay */
+.vignette-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.7) 100%);
+}
+
+/* High Contrast Scanlines */
+.scanline-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg,
+      transparent 0px,
+      transparent 1px,
+      rgba(0, 0, 0, 0.4) 2px);
+  background-size: 100% 3px;
+  z-index: 10;
+  mix-blend-mode: overlay;
+}
+
+/* Glitch Animation */
+@keyframes glitch-skew {
+  0% {
+    transform: skew(0deg);
+  }
+
+  20% {
+    transform: skew(-10deg);
+  }
+
+  40% {
+    transform: skew(10deg);
+  }
+
+  60% {
+    transform: skew(-5deg);
+  }
+
+  80% {
+    transform: skew(5deg);
+  }
+
+  100% {
+    transform: skew(0deg);
+  }
+}
+
+.glitch-hover:hover {
+  animation: glitch-skew 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
+  text-shadow: 2px 0 var(--color-stable), -2px 0 var(--color-meltdown);
+}
+
+/* Floating Animation (Parallax Depth) */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float-slow {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float 4s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+.animate-float-fast {
+  animation: float 3s ease-in-out infinite;
+  animation-delay: 0.5s;
+}
+
+/* Neon Glow Text */
+.neon-text-wh {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.7), 0 0 20px rgba(255, 255, 255, 0.5);
 }

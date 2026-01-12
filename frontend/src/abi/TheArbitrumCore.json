@@ -144,6 +144,13 @@
         "type": "function"
     },
     {
+        "inputs": [],
+        "name": "grabCore",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
         "inputs": [
             {
                 "internalType": "uint256",

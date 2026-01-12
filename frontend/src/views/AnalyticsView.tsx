@@ -8,13 +8,20 @@
  * - OperatorHistory: Previous holders in current cycle
  * - EventFeed: Real-time Transfer events
  */
+/**
+ * AnalyticsView - OPERATOR_INTEL
+ * Social competition and anti-gaming verification
+ */
 import { useState } from 'react';
 import { useAccount, useWatchContractEvent, useBlockNumber } from 'wagmi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Trophy, Users, TrendingUp, Shield, ShieldOff, ExternalLink } from 'lucide-react';
+import { Activity, Trophy, Users, TrendingUp, Shield, ShieldOff, ExternalLink, AlertTriangle } from 'lucide-react';
 
 import { useGameState } from '../AppRouter';
 import TheArbitrumCoreAbi from '../abi/TheArbitrumCore.json';
+import PageLayout from '../components/layout/PageLayout';
+import ViewHeader from '../components/layout/ViewHeader';
+import HUDCard from '../components/ui/HUDCard';
 
 const CONTRACT_ADDRESS = "0x963d9779eb0de38878a8763f9e840e3622cfba7e";
 
@@ -26,10 +33,19 @@ interface TransferEvent {
     timestamp: number;
 }
 
+import { useHistoricalData } from '../hooks/useHistoricalData';
+import { useMeltdownMonitor } from '../hooks/useMeltdownMonitor';
+
+// ... (existing imports)
+
 export default function AnalyticsView() {
     const { address } = useAccount();
     const { heat, isMelting, currentHolder, previousHolder } = useGameState();
     const { data: blockNumber } = useBlockNumber({ watch: true });
+
+    // Client-side Indexing Hook
+    const { leaderboard, isLoading: isIndexing, scanProgress } = useHistoricalData(currentHolder);
+    const { meltdownHistory } = useMeltdownMonitor();
 
     // Transfer events state
     const [transferEvents, setTransferEvents] = useState<TransferEvent[]>([]);
@@ -69,135 +85,144 @@ export default function AnalyticsView() {
         return `${Math.floor(seconds / 3600)}h ago`;
     };
 
-    // Mock leaderboard - TODO: Build from indexed events
-    const topHolders = [
-        { rank: 1, address: currentHolder || '0x0000', points: 1250, isActive: true },
-        { rank: 2, address: previousHolder || '0x0000', points: 980, isActive: false },
-        { rank: 3, address: '0x9E1C...4f1', points: 750, isActive: false },
-        { rank: 4, address: '0x2A8D...7c3', points: 520, isActive: false },
-        { rank: 5, address: '0xF5B2...1d8', points: 340, isActive: false },
-    ];
-
     return (
-        <div className="h-full overflow-y-auto p-4 space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                    <Activity className={`w-5 h-5 ${isMelting ? 'text-meltdown' : 'text-stable'}`} />
-                    <h1 className="font-heading text-lg font-bold uppercase tracking-wider">OPERATOR INTEL</h1>
-                </div>
-                <div className="text-micro opacity-40">
-                    BLOCK #{blockNumber?.toString() || '...'}
-                </div>
-            </div>
+        <PageLayout className="pt-10">
+            <ViewHeader
+                icon={Activity}
+                title="OPERATOR INTEL"
+                rightContent={blockNumber ? `BLOCK #${blockNumber}` : 'SYNCING...'}
+            />
 
             {/* EligibilityBadge */}
-            <div className={`glass-panel ${isEligible ? 'glass-panel-stable' : 'glass-panel-meltdown'} p-4`}>
+            <HUDCard variant="highlight" className="mb-4">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        {isEligible ? (
-                            <Shield className="w-5 h-5 text-stable" />
-                        ) : (
-                            <ShieldOff className="w-5 h-5 text-meltdown" />
-                        )}
+                    <div className="flex items-center gap-4">
+                        <div className={`
+                            w-10 h-10 rounded-full flex items-center justify-center border
+                            ${isEligible
+                                ? 'bg-stable/10 border-stable text-stable'
+                                : 'bg-meltdown/10 border-meltdown text-meltdown'
+                            }
+                        `}>
+                            {isEligible ? <Shield className="w-5 h-5" /> : <ShieldOff className="w-5 h-5" />}
+                        </div>
                         <div>
-                            <div className="text-micro opacity-50">YOUR STATUS</div>
-                            <div className={`font-heading text-sm font-bold ${isEligible ? 'text-stable' : 'text-meltdown'}`}>
+                            <div className="text-[10px] uppercase tracking-widest opacity-50 font-bold">YOUR STATUS</div>
+                            <div className={`font-heading text-lg font-bold ${isEligible ? 'text-stable neon-text-wh' : 'text-meltdown'}`}>
                                 {!address ? 'NOT CONNECTED' : isEligible ? 'ELIGIBLE TO GRAB' : 'COOLDOWN ACTIVE'}
                             </div>
                         </div>
                     </div>
-                    {!isEligible && address && (
-                        <div className="text-right">
-                            <div className="text-micro opacity-40">REASON</div>
-                            <div className="font-data text-xs opacity-70">
-                                {address.toLowerCase() === currentHolder?.toLowerCase()
-                                    ? 'You hold the Core'
-                                    : 'Previous holder'
-                                }
-                            </div>
-                        </div>
-                    )}
                 </div>
-            </div>
+            </HUDCard>
 
             {/* Global Stats */}
-            <div className="grid grid-cols-2 gap-3">
-                <div className={`glass-panel ${isMelting ? 'glass-panel-meltdown' : 'glass-panel-stable'} p-4`}>
-                    <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp className="w-4 h-4 text-stable" />
-                        <span className="text-micro opacity-50">ENTROPY</span>
+            <div className="grid grid-cols-2 gap-4">
+                <HUDCard variant="stat">
+                    <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-2 mb-2 opacity-60">
+                            <TrendingUp className="w-4 h-4" />
+                            <span className="text-[10px] uppercase tracking-widest">ENTROPY</span>
+                        </div>
+                        <div className={`font-heading text-3xl font-bold ${isMelting ? 'text-meltdown' : 'text-stable'}`}>
+                            {(heat * 100).toFixed(1)}%
+                        </div>
                     </div>
-                    <div className={`font-heading text-2xl font-bold ${isMelting ? 'text-meltdown' : 'text-stable'}`}>
-                        {(heat * 100).toFixed(1)}%
-                    </div>
-                </div>
+                </HUDCard>
 
-                <div className={`glass-panel ${isMelting ? 'glass-panel-meltdown' : 'glass-panel-stable'} p-4`}>
-                    <div className="flex items-center gap-2 mb-2">
-                        <Users className="w-4 h-4 text-stable" />
-                        <span className="text-micro opacity-50">TRANSFERS</span>
+                <HUDCard variant="stat">
+                    <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-2 mb-2 opacity-60">
+                            <Users className="w-4 h-4" />
+                            <span className="text-[10px] uppercase tracking-widest">TRANSFERS</span>
+                        </div>
+                        <div className="font-heading text-3xl font-bold text-white">
+                            {transferEvents.length}
+                        </div>
                     </div>
-                    <div className="font-heading text-2xl font-bold">
-                        {transferEvents.length}
-                    </div>
-                </div>
+                </HUDCard>
             </div>
 
-            {/* Leaderboard */}
-            <div className={`glass-panel ${isMelting ? 'glass-panel-meltdown' : 'glass-panel-stable'} p-4`}>
-                <div className="flex items-center gap-2 mb-4">
-                    <Trophy className="w-4 h-4 text-warning" />
-                    <span className="font-heading text-xs uppercase tracking-widest font-bold">LEADERBOARD</span>
-                </div>
-
-                <div className="space-y-2">
-                    {topHolders.map((holder) => (
-                        <motion.div
-                            key={holder.rank}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: holder.rank * 0.1 }}
-                            className={`flex items-center justify-between py-2 border-b border-white/5 last:border-0 ${holder.isActive ? 'bg-stable/5' : ''
-                                }`}
-                        >
-                            <div className="flex items-center gap-3">
-                                <span className={`font-heading text-sm font-bold w-6 ${holder.rank === 1 ? 'text-warning' :
-                                    holder.rank === 2 ? 'text-neutral-400' :
-                                        holder.rank === 3 ? 'text-meltdown-light' : 'opacity-40'
-                                    }`}>
+            {/* Leaderboard - Populated by Client-Side RPC Indexer */}
+            <HUDCard title="LEADERBOARD" icon={Trophy}>
+                <div className="space-y-1">
+                    {isIndexing && leaderboard.length === 0 ? (
+                        <div className="text-center py-6 opacity-30">
+                            <Activity className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                            <div className="text-xs uppercase tracking-widest">Indexing History... {scanProgress}%</div>
+                        </div>
+                    ) : leaderboard.length === 0 ? (
+                        <div className="text-center py-6 opacity-30">
+                            <Trophy className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                            <div className="text-xs uppercase tracking-widest">No Data Found</div>
+                        </div>
+                    ) : (
+                        leaderboard.map((holder) => (
+                            <motion.div
+                                key={holder.address}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className={`
+                                    grid grid-cols-[40px_1fr_auto] items-center gap-4 py-3 px-3 rounded
+                                    border border-transparent hover:border-white/10 hover:bg-white/5 transition-colors
+                                    ${holder.isActive ? 'bg-stable/5 border-stable/20' : ''}
+                                `}
+                            >
+                                <span className={`font-heading text-sm font-bold text-center ${holder.rank === 1 ? 'text-warning' : 'opacity-40'}`}>
                                     #{holder.rank}
                                 </span>
-                                <span className="font-data text-xs">
+
+                                <span className="font-mono text-sm truncate">
                                     {formatAddress(holder.address)}
-                                    {holder.isActive && <span className="ml-2 text-stable text-micro">● ACTIVE</span>}
+                                    {holder.isActive && <span className="ml-2 text-stable text-[9px] uppercase tracking-wider font-bold">● ACTIVE</span>}
                                 </span>
-                            </div>
-                            <div className="font-heading text-sm font-bold text-stable">
-                                {holder.points}
-                            </div>
-                        </motion.div>
-                    ))}
+
+                                <div className="font-heading text-sm font-bold text-stable text-right">
+                                    {holder.points}
+                                </div>
+                            </motion.div>
+                        ))
+                    )}
                 </div>
-            </div>
+            </HUDCard>
+
+            {/* Meltdown History */}
+            <HUDCard title="RECENT FAILURES" icon={AlertTriangle} variant="danger" className="mb-4">
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                    {meltdownHistory.length === 0 ? (
+                        <div className="text-center py-4 opacity-40">
+                            <Shield className="w-6 h-6 mx-auto mb-2 text-stable" />
+                            <div className="text-[10px] uppercase tracking-widest text-stable">SYSTEM STABLE // NO INCIDENTS</div>
+                        </div>
+                    ) : (
+                        meltdownHistory.map((event) => (
+                            <div key={event.id} className="p-2 bg-meltdown/5 border border-meltdown/20 rounded text-xs flex justify-between items-center">
+                                <div>
+                                    <div className="text-meltdown font-bold uppercase tracking-wider mb-1">CORE BREACH</div>
+                                    <div className="opacity-70 text-[10px]">
+                                        FAILED BY: <span className="font-mono text-white">{formatAddress(event.defaulter)}</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-[9px] opacity-50 mb-1">{new Date(event.timestamp).toLocaleTimeString()}</div>
+                                    <div className="text-[9px] text-stable uppercase">
+                                        RESET BY: {formatAddress(event.hero)}
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </HUDCard>
 
             {/* Live Transfer Feed */}
-            <div className={`glass-panel ${isMelting ? 'glass-panel-meltdown' : 'glass-panel-stable'} p-4`}>
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-stable animate-pulse" />
-                        <span className="font-heading text-xs uppercase tracking-widest font-bold">LIVE FEED</span>
-                    </div>
-                    <div className="text-micro opacity-40">
-                        {transferEvents.length} events
-                    </div>
-                </div>
-
-                <div className="space-y-2 max-h-48 overflow-y-auto">
+            <HUDCard title="LIVE FEED" icon={Activity}>
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                     <AnimatePresence>
                         {transferEvents.length === 0 ? (
-                            <div className="text-center py-4 opacity-40">
-                                <div className="text-micro">Watching for Transfer events...</div>
+                            <div className="text-center py-8 opacity-30">
+                                <Activity className="w-8 h-8 mx-auto mb-2 animate-pulse" />
+                                <div className="text-xs uppercase tracking-widest">Scanning network...</div>
                             </div>
                         ) : (
                             transferEvents.slice(0, 10).map((event, i) => (
@@ -205,22 +230,15 @@ export default function AnalyticsView() {
                                     key={event.transactionHash + i}
                                     initial={{ opacity: 0, y: -10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0 }}
-                                    className="flex items-center justify-between py-2 border-b border-white/5 last:border-0"
+                                    className="flex items-center justify-between py-2 border-b border-white/5 last:border-0 text-xs"
                                 >
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-data text-micro opacity-60">
-                                            {formatAddress(event.from)}
-                                        </span>
+                                    <div className="flex items-center gap-2 font-mono">
+                                        <span className="opacity-60">{formatAddress(event.from)}</span>
                                         <span className="text-stable">→</span>
-                                        <span className="font-data text-micro">
-                                            {formatAddress(event.to)}
-                                        </span>
+                                        <span>{formatAddress(event.to)}</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-data text-micro opacity-40">
-                                            {getTimeAgo(event.timestamp)}
-                                        </span>
+                                    <div className="flex items-center gap-3">
+                                        <span className="opacity-40">{getTimeAgo(event.timestamp)}</span>
                                         <a
                                             href={`https://sepolia.arbiscan.io/tx/${event.transactionHash}`}
                                             target="_blank"
@@ -235,7 +253,7 @@ export default function AnalyticsView() {
                         )}
                     </AnimatePresence>
                 </div>
-            </div>
-        </div>
+            </HUDCard>
+        </PageLayout>
     );
 }

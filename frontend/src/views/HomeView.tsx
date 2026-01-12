@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 
 import CoreVisual from '../components/core/CoreVisual';
+import GameStatusPanel from '../components/hud/GameStatusPanel';
 import { useGameState } from '../AppRouter';
 import { useSynth } from '../hooks/useSynth';
 
@@ -73,6 +74,9 @@ export default function HomeView() {
     return (
         <div className="h-full flex flex-col justify-between items-center py-8 px-6 relative bg-transparent">
 
+            {/* Vignette Overlay */}
+            <div className="vignette-overlay" />
+
             {/* Boot Sequence Overlay */}
             <AnimatePresence>
                 {bootPhase === 0 && (
@@ -97,10 +101,10 @@ export default function HomeView() {
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: 0.3 }}
-                        className="text-center mt-4 mb-8"
+                        className="text-center mt-4 mb-8 animate-float-medium"
                     >
                         <h1
-                            className={`text-4xl md:text-5xl tracking-[0.5em] mb-3 ${isMelting ? 'text-orange-400' : 'text-cyan-400'
+                            className={`text-4xl md:text-5xl tracking-[0.5em] mb-3 glitch-hover cursor-default ${isMelting ? 'text-orange-400' : 'text-cyan-400'
                                 }`}
                             style={{
                                 fontFamily: "'Orbitron', sans-serif",
@@ -129,7 +133,7 @@ export default function HomeView() {
                         initial={{ scale: 0.5, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ duration: 1.2, delay: 0.6, ease: "easeOut" }}
-                        className="flex-1 flex items-center justify-center relative w-full"
+                        className="flex-1 flex items-center justify-center relative w-full animate-float-slow"
                         style={{ minHeight: '250px' }}
                     >
                         {/* Radial Glow Behind Core */}
@@ -159,7 +163,7 @@ export default function HomeView() {
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: 1.2 }}
-                        className="w-full max-w-md space-y-4 relative z-50 pb-4"
+                        className="w-full max-w-md space-y-4 relative z-50 pb-4 animate-float-fast"
                         style={{
                             background: 'linear-gradient(to top, rgba(5,5,5,0.9) 0%, transparent 100%)',
                             paddingTop: '32px',
@@ -167,57 +171,31 @@ export default function HomeView() {
                         }}
                     >
                         {/* Match Data Panel */}
-                        <div className={`glass-panel ${isMelting ? 'glass-panel-meltdown' : 'glass-panel-stable'} px-6 py-4`}>
-                            <div className="flex items-center justify-between" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
-                                <div className="text-center flex-1">
-                                    <span className="block text-[10px] opacity-40 uppercase tracking-widest mb-1">Active Operator</span>
-                                    <span className={`text-sm font-bold ${isMelting ? 'text-orange-400' : 'text-cyan-400'}`}>
-                                        {currentHolder ? `${currentHolder.slice(0, 6)}...${currentHolder.slice(-4)}` : 'NONE'}
-                                    </span>
-                                </div>
-                                <div className="w-px h-10 bg-white/10" />
-                                <div className="text-center flex-1">
-                                    <span className="block text-[10px] opacity-40 uppercase tracking-widest mb-1">Thermal Stability</span>
-                                    <span className={`text-sm font-bold ${isMelting ? 'text-orange-400' : 'text-cyan-400'}`}>
-                                        {(100 - Math.min(heat, 1) * 100).toFixed(0)}%
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                        <GameStatusPanel />
 
                         {/* CTA Button */}
                         <motion.button
-                            whileHover={{ scale: 1.02 }}
+                            whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleStartChallenge}
-                            className={`group relative w-full py-5 font-bold uppercase text-sm overflow-hidden border-2 ${isMelting
-                                ? 'bg-orange-500 text-black border-orange-300 hover:bg-orange-400'
-                                : 'bg-cyan-400 text-black border-cyan-200 hover:bg-white'
+                            className={`group relative w-full py-5 font-black uppercase text-sm overflow-hidden border-2 transition-all duration-300 shadow-[0_0_20px_rgba(0,0,0,0.5)] ${isMelting
+                                ? 'bg-red-600 border-red-600 text-white hover:bg-red-500 hover:border-red-500 hover:shadow-[0_0_30px_rgba(220,38,38,0.6)]'
+                                : 'bg-white border-white text-black hover:bg-gray-200 hover:border-gray-200 hover:shadow-[0_0_30px_rgba(255,255,255,0.6)]'
                                 }`}
                             style={{
                                 fontFamily: "'Orbitron', sans-serif",
                                 letterSpacing: '0.2em',
-                                boxShadow: isMelting
-                                    ? '0 0 30px rgba(255, 62, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.1)'
-                                    : '0 0 30px rgba(0, 255, 255, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.1)',
                             }}
                         >
                             <span className="relative z-10 flex items-center justify-center gap-3">
                                 START CHALLENGE
                                 <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                             </span>
-
-                            {/* Scanline overlay */}
-                            <div className="absolute inset-0 opacity-10 pointer-events-none"
-                                style={{
-                                    background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px)',
-                                }}
-                            />
                         </motion.button>
 
                         {/* Footer Label */}
                         <p
-                            className="text-center text-[9px] opacity-20 uppercase tracking-[0.6em]"
+                            className="text-center text-[10px] text-white/50 font-bold uppercase tracking-[0.6em]"
                             style={{ fontFamily: "'Rajdhani', sans-serif" }}
                         >
                             HOLD • EARN • TRANSFER

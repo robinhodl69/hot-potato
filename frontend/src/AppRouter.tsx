@@ -17,6 +17,7 @@ import TechTerminalView from './views/TechTerminalView';
 import Starfield from './components/effects/Starfield';
 import { useSynth } from './hooks/useSynth';
 import TheArbitrumCoreAbi from './abi/TheArbitrumCore.json';
+import NetworkGuard from './components/auth/NetworkGuard';
 
 const CONTRACT_ADDRESS = "0x963d9779eb0de38878a8763f9e840e3622cfba7e";
 const SAFE_LIMIT_BLOCKS = 900;
@@ -61,10 +62,52 @@ function NavBar() {
         play('click');
     };
 
+    const accentColor = isMelting ? 'rgb(255, 100, 50)' : 'rgb(0, 255, 255)';
+
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 p-3">
+        <nav
+            style={{
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                zIndex: 50,
+                padding: '0.5rem',
+                paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom, 0px))'
+            }}
+        >
             <div className="max-w-lg mx-auto">
-                <div className={`glass-panel ${isMelting ? 'glass-panel-meltdown' : 'glass-panel-stable'} flex justify-around py-2 px-1`}>
+                {/* Navbar Container with enhanced styling */}
+                <div
+                    className="relative flex justify-around items-center py-3 px-2"
+                    style={{
+                        background: 'rgba(5, 5, 5, 0.95)',
+                        backdropFilter: 'blur(20px)',
+                        border: `1px solid ${isMelting ? 'rgba(255, 100, 50, 0.3)' : 'rgba(0, 255, 255, 0.25)'}`,
+                        borderRadius: '4px',
+                        boxShadow: isMelting
+                            ? '0 0 30px rgba(255, 50, 0, 0.2), inset 0 0 20px rgba(255, 50, 0, 0.05)'
+                            : '0 0 30px rgba(0, 255, 255, 0.15), inset 0 0 20px rgba(0, 255, 255, 0.03)',
+                    }}
+                >
+                    {/* Corner Accents */}
+                    <div
+                        className="absolute -top-px -left-px w-4 h-4 border-l-2 border-t-2"
+                        style={{ borderColor: accentColor, opacity: 0.7 }}
+                    />
+                    <div
+                        className="absolute -top-px -right-px w-4 h-4 border-r-2 border-t-2"
+                        style={{ borderColor: accentColor, opacity: 0.7 }}
+                    />
+                    <div
+                        className="absolute -bottom-px -left-px w-4 h-4 border-l-2 border-b-2"
+                        style={{ borderColor: accentColor, opacity: 0.7 }}
+                    />
+                    <div
+                        className="absolute -bottom-px -right-px w-4 h-4 border-r-2 border-b-2"
+                        style={{ borderColor: accentColor, opacity: 0.7 }}
+                    />
+
                     {navItems.map((item) => {
                         const isActive = location.pathname === item.path;
                         const Icon = item.icon;
@@ -74,15 +117,39 @@ function NavBar() {
                                 key={item.path}
                                 to={item.path}
                                 onClick={handleNavClick}
-                                className={`flex flex-col items-center gap-1 px-2 py-2 rounded transition-all ${isActive
-                                    ? isMelting
-                                        ? 'text-orange-400 bg-orange-500/10'
-                                        : 'text-cyan-400 bg-cyan-500/10'
-                                    : 'text-white/40 hover:text-white/70'
-                                    }`}
+                                className="relative flex flex-col items-center gap-1 px-3 py-2 rounded transition-all"
+                                style={{
+                                    color: isActive
+                                        ? (isMelting ? '#ff6432' : '#00ffff')
+                                        : 'rgba(255, 255, 255, 0.5)',
+                                    background: isActive
+                                        ? (isMelting ? 'rgba(255, 100, 50, 0.15)' : 'rgba(0, 255, 255, 0.1)')
+                                        : 'transparent',
+                                    boxShadow: isActive
+                                        ? (isMelting ? '0 0 15px rgba(255, 100, 50, 0.3)' : '0 0 15px rgba(0, 255, 255, 0.25)')
+                                        : 'none',
+                                }}
                             >
-                                <Icon className="w-4 h-4" />
-                                <span className="font-mono text-[8px] uppercase tracking-wider font-bold">
+                                {/* Active indicator line */}
+                                {isActive && (
+                                    <div
+                                        className="absolute -top-1 left-1/2 -translate-x-1/2 w-6 h-0.5"
+                                        style={{
+                                            background: isMelting ? '#ff6432' : '#00ffff',
+                                            boxShadow: isMelting
+                                                ? '0 0 8px rgba(255, 100, 50, 0.8)'
+                                                : '0 0 8px rgba(0, 255, 255, 0.8)',
+                                        }}
+                                    />
+                                )}
+                                <Icon className="w-5 h-5" />
+                                <span
+                                    className="uppercase tracking-wider font-bold"
+                                    style={{
+                                        fontFamily: "'Orbitron', sans-serif",
+                                        fontSize: '9px',
+                                    }}
+                                >
                                     {item.label}
                                 </span>
                             </Link>
@@ -129,18 +196,20 @@ function AppContent() {
             <div className={`h-screen w-screen overflow-hidden ${isMelting ? 'state-meltdown' : 'state-stable'}`}>
                 <Starfield isMelting={isMelting} />
 
-                <div className={`relative z-20 h-full ${isHomePage ? '' : 'pb-20'}`}>
-                    <Routes>
-                        <Route path="/" element={<HomeView />} />
-                        <Route path="/core" element={<GameView />} />
-                        <Route path="/pulse" element={<AnalyticsView />} />
-                        <Route path="/vault" element={<VaultView />} />
-                        <Route path="/logs" element={<SystemLogsView />} />
-                        <Route path="/terminal" element={<TechTerminalView />} />
-                    </Routes>
-                </div>
+                <NetworkGuard>
+                    <div className={`relative z-20 h-full ${isHomePage ? '' : 'pb-20'}`} style={{ paddingLeft: isHomePage ? 0 : '1rem', paddingRight: isHomePage ? 0 : '1rem' }}>
+                        <Routes>
+                            <Route path="/" element={<HomeView />} />
+                            <Route path="/core" element={<GameView />} />
+                            <Route path="/pulse" element={<AnalyticsView />} />
+                            <Route path="/vault" element={<VaultView />} />
+                            <Route path="/logs" element={<SystemLogsView />} />
+                            <Route path="/terminal" element={<TechTerminalView />} />
+                        </Routes>
+                    </div>
 
-                <NavBar />
+                    <NavBar />
+                </NetworkGuard>
             </div>
         </GameStateContext.Provider>
     );

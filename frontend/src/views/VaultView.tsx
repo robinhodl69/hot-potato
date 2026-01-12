@@ -12,6 +12,7 @@ import { motion } from 'framer-motion';
 import { Wallet, Clock, TrendingUp, Award, User, Shield } from 'lucide-react';
 
 import { useGameState } from '../AppRouter';
+import { useHistoricalData } from '../hooks/useHistoricalData';
 import TheArbitrumCoreAbi from '../abi/TheArbitrumCore.json';
 
 const CONTRACT_ADDRESS = "0x963d9779eb0de38878a8763f9e840e3622cfba7e";
@@ -20,13 +21,17 @@ const CONTRACT_ADDRESS = "0x963d9779eb0de38878a8763f9e840e3622cfba7e";
 const ACHIEVEMENTS = [
     { id: 'first_hold', name: 'First Contact', desc: 'Hold the Core for the first time', threshold: 1, icon: '🌟' },
     { id: 'centurion', name: 'Centurion', desc: 'Accumulate 100+ points', threshold: 100, icon: '⚡' },
-    { id: 'survivor', name: 'Survivor', desc: 'Transfer before meltdown 5 times', threshold: 5, icon: '🛡️' },
+    { id: 'survivor', name: 'Survivor', desc: 'Secure the Core 5+ times', threshold: 5, icon: '🛡️' },
     { id: 'whale', name: 'Whale', desc: 'Accumulate 1,000+ points', threshold: 1000, icon: '🐋' },
 ];
 
 export default function VaultView() {
     const { address, isConnected } = useAccount();
     const { isMelting, currentHolder } = useGameState();
+
+    // Get historical stats for achievements
+    const { userStats } = useHistoricalData(currentHolder);
+    const grabCount = address && userStats ? (userStats[address] || 0) : 0;
 
     // User points from contract
     const { data: userPoints } = useReadContract({
@@ -44,6 +49,7 @@ export default function VaultView() {
     const unlockedAchievements = ACHIEVEMENTS.filter(a => {
         if (a.id === 'first_hold') return points > 0;
         if (a.id === 'centurion') return points >= 100;
+        if (a.id === 'survivor') return grabCount >= 5;
         if (a.id === 'whale') return points >= 1000;
         return false;
     });
