@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, HelpCircle, Wallet, CheckCircle2 } from 'lucide-react';
+import { ChevronRight, HelpCircle, Wallet, CheckCircle2, ExternalLink } from 'lucide-react';
 import { useAccount, useConnect } from 'wagmi';
 
 import CoreVisual from '../components/core/CoreVisual';
@@ -36,11 +36,14 @@ export default function HomeView() {
             try {
                 // sdk.actions.ready() is already called in main.tsx, but no harm in ensuring context here
                 const context = await sdk.context;
-                if (context?.user) {
-                    setFarcasterUser({
-                        username: context.user.username,
-                        pfpUrl: context.user.pfpUrl
-                    });
+                if (context) {
+                    setIsFarcasterEnv(true);
+                    if (context.user) {
+                        setFarcasterUser({
+                            username: context.user.username,
+                            pfpUrl: context.user.pfpUrl
+                        });
+                    }
                 }
             } catch (err) {
                 console.warn('Farcaster context failed:', err);
@@ -50,6 +53,7 @@ export default function HomeView() {
     }, []);
 
     const [farcasterUser, setFarcasterUser] = useState<{ username?: string, pfpUrl?: string } | null>(null);
+    const [isFarcasterEnv, setIsFarcasterEnv] = useState(false);
     const [bootPhase, setBootPhase] = useState(0);
     const [showContent, setShowContent] = useState(false);
     const [isHowToPlayOpen, setIsHowToPlayOpen] = useState(false);
@@ -92,10 +96,24 @@ export default function HomeView() {
         return () => clearTimeout(droneTimer);
     }, [play]);
 
-    const handleConnect = () => {
+    const handleConnect = (forceInjected = false) => {
         play('click');
-        if (connectors?.[0]) {
-            connect({ connector: connectors[0] });
+
+        const fcConnector = connectors.find(c => c.id === 'farcaster-miniapp');
+        const injectedConnector = connectors.find(c => c.id === 'injected');
+
+        let connectorToUse = connectors[0];
+
+        if (forceInjected && injectedConnector) {
+            connectorToUse = injectedConnector;
+        } else if (isFarcasterEnv && fcConnector) {
+            connectorToUse = fcConnector;
+        } else if (injectedConnector) {
+            connectorToUse = injectedConnector;
+        }
+
+        if (connectorToUse) {
+            connect({ connector: connectorToUse });
         }
     };
 
@@ -208,21 +226,34 @@ export default function HomeView() {
 
                         {/* CTA Button - WALLET CONNECTION ONLY */}
                         {!isConnected ? (
-                            <motion.button
-                                whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(0, 255, 255, 0.4)' }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={handleConnect}
-                                className={`group relative w-full py-5 font-black uppercase text-sm overflow-hidden border-2 transition-all duration-300 bg-white border-white text-black`}
-                                style={{
-                                    fontFamily: "'Orbitron', sans-serif",
-                                    letterSpacing: '0.2em',
-                                }}
-                            >
-                                <span className="relative z-10 flex items-center justify-center gap-3">
-                                    <Wallet className="w-5 h-5" />
-                                    CONNECT WALLET
-                                </span>
-                            </motion.button>
+                            <div className="space-y-3">
+                                <motion.button
+                                    whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(0, 255, 255, 0.4)' }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => handleConnect()}
+                                    className={`group relative w-full py-5 font-black uppercase text-sm overflow-hidden border-2 transition-all duration-300 bg-white border-white text-black shadow-[0_5px_15px_rgba(255,255,255,0.2)]`}
+                                    style={{
+                                        fontFamily: "'Orbitron', sans-serif",
+                                        letterSpacing: '0.2em',
+                                    }}
+                                >
+                                    <span className="relative z-10 flex items-center justify-center gap-3">
+                                        <Wallet className="w-5 h-5" />
+                                        {isFarcasterEnv ? 'CONNECT FARCASTER' : 'CONNECT WALLET'}
+                                    </span>
+                                </motion.button>
+
+                                {isFarcasterEnv && (
+                                    <button
+                                        onClick={() => handleConnect(true)}
+                                        className="w-full py-2 text-[10px] text-white/30 font-bold uppercase tracking-[0.2em] hover:text-white/60 transition-colors flex items-center justify-center gap-2"
+                                        style={{ fontFamily: "'Orbitron', sans-serif" }}
+                                    >
+                                        <ExternalLink className="w-3 h-3" />
+                                        USE EXTERNAL WALLET (METAMASK)
+                                    </button>
+                                )}
+                            </div>
                         ) : (
                             <div className="space-y-3">
                                 <div className="w-full py-4 border-2 border-stable/30 bg-stable/10 rounded flex items-center justify-center gap-3 text-stable font-bold tracking-widest text-xs uppercase overflow-hidden px-4" style={{ fontFamily: "'Orbitron', sans-serif" }}>
