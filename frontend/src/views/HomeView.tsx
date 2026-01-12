@@ -105,20 +105,19 @@ export default function HomeView() {
         }
 
         const fcConnector = connectors.find(c => c.id.includes('farcaster'));
-        // Injected can have different IDs depending on the wallet, but usually type is 'injected'
+        const mmConnector = connectors.find(c => c.id.toLowerCase().includes('metamask'));
         const injectedConnector = connectors.find(c => c.id === 'injected' || c.type === 'injected');
 
         let connectorToUse: any = connectors[0];
 
-        if (forceInjected && injectedConnector) {
-            connectorToUse = injectedConnector;
+        if (forceInjected && (mmConnector || injectedConnector)) {
+            connectorToUse = mmConnector || injectedConnector;
         } else if (isFarcasterEnv && fcConnector) {
             connectorToUse = fcConnector;
+        } else if (mmConnector) {
+            connectorToUse = mmConnector;
         } else if (injectedConnector) {
             connectorToUse = injectedConnector;
-        } else {
-            // Fallback to first available
-            connectorToUse = connectors[0];
         }
 
         if (connectorToUse) {

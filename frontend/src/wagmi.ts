@@ -22,10 +22,16 @@ const transports = chains.reduce((acc, chain) => {
   return acc;
 }, {} as Record<number, ReturnType<typeof http>>);
 
+import { metaMask } from 'wagmi/connectors';
+
 // Main Wagmi config used throughout the app
 export const config = createConfig({
   chains,
-  connectors: isDev ? [injected(), farcasterMiniApp()] : [farcasterMiniApp()],
+  connectors: [
+    farcasterMiniApp(),
+    metaMask(),
+    injected(),
+  ],
   transports,
 });
 
