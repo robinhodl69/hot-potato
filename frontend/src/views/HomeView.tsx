@@ -84,11 +84,11 @@ export default function HomeView() {
                         initial={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.5 }}
-                        className="absolute inset-0 z-20 bg-[#050505] flex items-center justify-center p-8"
+                        className="fixed inset-0 z-[100] bg-[#050505] flex flex-col items-center justify-center p-8 text-center"
                     >
-                        <pre className="text-[11px] text-cyan-400 whitespace-pre-wrap leading-relaxed max-w-sm text-center" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+                        <pre className="text-sm text-red-500 font-bold whitespace-pre-wrap leading-relaxed tracking-widest uppercase" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
                             {typedText}
-                            <span className="animate-pulse">█</span>
+                            <span className="animate-pulse text-red-500">█</span>
                         </pre>
                     </motion.div>
                 )}
@@ -189,10 +189,10 @@ export default function HomeView() {
 
                         {/* Footer Label */}
                         <p
-                            className="text-center text-[10px] text-white/50 font-bold uppercase tracking-[0.6em]"
-                            style={{ fontFamily: "'Rajdhani', sans-serif" }}
+                            className="text-center text-sm text-red-500 font-bold uppercase tracking-[0.2em] font-heading mt-4"
+                            style={{ fontFamily: "'Orbitron', sans-serif" }}
                         >
-                            HOLD • EARN • TRANSFER
+                            POWERED BY ARBITRUM STYLUS
                         </p>
                     </motion.div>
                 )}
