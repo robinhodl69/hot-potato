@@ -105,7 +105,7 @@ export default function HomeView() {
     };
 
     return (
-        <div className="h-full flex flex-col justify-between items-center py-8 px-6 relative bg-transparent">
+        <div className="h-full flex flex-col justify-between items-center py-8 px-6 relative bg-transparent overflow-hidden">
 
             {/* Vignette Overlay */}
             <div className="vignette-overlay" />
@@ -225,13 +225,20 @@ export default function HomeView() {
                             </motion.button>
                         ) : (
                             <div className="space-y-3">
-                                <div className="w-full py-4 border-2 border-stable/30 bg-stable/10 rounded flex items-center justify-center gap-3 text-stable font-bold tracking-widest text-xs uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                                <div className="w-full py-4 border-2 border-stable/30 bg-stable/10 rounded flex items-center justify-center gap-3 text-stable font-bold tracking-widest text-xs uppercase overflow-hidden px-4" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                                     {farcasterUser?.pfpUrl ? (
-                                        <img src={farcasterUser.pfpUrl} alt="" className="w-5 h-5 rounded-full border border-stable/50" />
+                                        <div className="flex-shrink-0 w-6 h-6 min-w-[24px] min-h-[24px] rounded-full border border-stable/50 overflow-hidden relative">
+                                            <img
+                                                src={farcasterUser.pfpUrl}
+                                                alt=""
+                                                className="absolute inset-0 w-full h-full object-cover"
+                                                style={{ width: '24px', height: '24px' }}
+                                            />
+                                        </div>
                                     ) : (
-                                        <CheckCircle2 className="w-5 h-5" />
+                                        <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
                                     )}
-                                    OPERATOR: {farcasterUser?.username ? `@${farcasterUser.username}` : formatAddress(address)}
+                                    <span className="truncate">OPERATOR: {farcasterUser?.username ? `@${farcasterUser.username}` : formatAddress(address)}</span>
                                 </div>
                                 <div className="w-full py-2 text-center text-[10px] text-white/30 font-bold uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                                     SYSTEM STANDBY // GAME LOCKED
