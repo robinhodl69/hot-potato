@@ -21,7 +21,7 @@ export default function OperatorProfile({ address, isPreviousHolder, isMe, farca
     };
 
     const handleShareTwitter = () => {
-        const recipient = farcasterUser?.username ? `@${farcasterUser.username}` : safeAddress;
+        const recipient = farcasterUser?.username ? `@${farcasterUser.username}` : formatAddress(safeAddress);
         const text = `⚡ I just passed The Arbitrum Core to ${recipient}! Keep it stable and pass it on. @arbitrum 🛰️\n\nPlay here: https://farcaster.xyz/miniapps/eiZiilnpq2Gv/the-arbitrum-core`;
         const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
         window.open(url, '_blank');

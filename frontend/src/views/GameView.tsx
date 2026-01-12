@@ -58,7 +58,7 @@ export default function GameView() {
     // ========================
     const isOwner = address?.toLowerCase() === currentHolder?.toLowerCase();
     const isPreviousHolder = address?.toLowerCase() === previousHolder?.toLowerCase();
-    const canGrab = isConnected && !isOwner && (!isPreviousHolder || isMelting);
+    const canGrab = isConnected && !isOwner && (isMelting || (isConnected && !isPreviousHolder));
 
     // Stability calculation: (SAFE_LIMIT - blocksHeld) / SAFE_LIMIT * 100
     const stabilityPercent = Math.max(0, Math.min(100, (1 - heat) * 100));
@@ -80,8 +80,10 @@ export default function GameView() {
     // EFFECTS
     // ========================
 
-    // SDK init & Context
-    const [farcasterUser, setFarcasterUser] = useState<{ username?: string, pfpUrl?: string } | null>(null);
+    // SDK init & Context (Logged in user)
+    const [viewerFarcasterUser, setViewerFarcasterUser] = useState<{ username?: string, pfpUrl?: string } | null>(null);
+    // Holder profile info
+    const [holderFarcasterUser, setHolderFarcasterUser] = useState<{ username?: string, pfpUrl?: string } | null>(null);
 
     useEffect(() => {
         const initSdk = async () => {
@@ -89,7 +91,7 @@ export default function GameView() {
                 sdk.actions.ready();
                 const context = await sdk.context;
                 if (context?.user) {
-                    setFarcasterUser({
+                    setViewerFarcasterUser({
                         username: context.user.username,
                         pfpUrl: context.user.pfpUrl
                     });
@@ -100,6 +102,28 @@ export default function GameView() {
         };
         initSdk();
     }, []);
+
+    // Fetch Holder Farcaster Info
+    useEffect(() => {
+        const fetchHolderProfile = async () => {
+            if (!currentHolder || currentHolder === '0x0000000000000000000000000000000000000000') return;
+            try {
+                const response = await fetch(`https://searchcaster.xyz/api/profiles?connected_address=${currentHolder}`);
+                const data = await response.json();
+                if (data && data.length > 0) {
+                    setHolderFarcasterUser({
+                        username: data[0].body.username,
+                        pfpUrl: data[0].body.avatar
+                    });
+                } else {
+                    setHolderFarcasterUser(null);
+                }
+            } catch (err) {
+                console.warn('Failed to fetch holder profile:', err);
+            }
+        };
+        fetchHolderProfile();
+    }, [currentHolder]);
 
     // Sonar effect when owner and melting
     useEffect(() => {
@@ -357,7 +381,7 @@ export default function GameView() {
                             address={currentHolder}
                             isPreviousHolder={isPreviousHolder || false}
                             isMe={false}
-                            farcasterUser={farcasterUser}
+                            farcasterUser={holderFarcasterUser}
                         />
                     )}
 
@@ -386,7 +410,7 @@ export default function GameView() {
                                         WARPCAST
                                     </a>
                                     <a
-                                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`⚡ I just passed The Arbitrum Core to ${lastRecipientHandle ? `@${lastRecipientHandle}` : targetAddress}! Keep it stable and pass it on. @arbitrum 🛰️\n\nPlay here: https://farcaster.xyz/miniapps/eiZiilnpq2Gv/the-arbitrum-core`)}`}
+                                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`⚡ I just passed The Arbitrum Core to ${lastRecipientHandle ? `@${lastRecipientHandle}` : formatAddress(targetAddress)}! Keep it stable and pass it on. @arbitrum 🛰️\n\nPlay here: https://farcaster.xyz/miniapps/eiZiilnpq2Gv/the-arbitrum-core`)}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="py-2 bg-blue-400/10 border border-blue-400/30 rounded flex items-center justify-center gap-2 text-[10px] font-bold text-blue-400 hover:bg-blue-400/20 transition-all"

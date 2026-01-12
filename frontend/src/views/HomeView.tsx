@@ -99,10 +99,16 @@ export default function HomeView() {
     const handleConnect = (forceInjected = false) => {
         play('click');
 
-        const fcConnector = connectors.find(c => c.id === 'farcaster-miniapp');
-        const injectedConnector = connectors.find(c => c.id === 'injected');
+        if (!connectors || connectors.length === 0) {
+            console.warn('No connectors available');
+            return;
+        }
 
-        let connectorToUse = connectors[0];
+        const fcConnector = connectors.find(c => c.id.includes('farcaster'));
+        // Injected can have different IDs depending on the wallet, but usually type is 'injected'
+        const injectedConnector = connectors.find(c => c.id === 'injected' || c.type === 'injected');
+
+        let connectorToUse: any = connectors[0];
 
         if (forceInjected && injectedConnector) {
             connectorToUse = injectedConnector;
@@ -110,6 +116,9 @@ export default function HomeView() {
             connectorToUse = fcConnector;
         } else if (injectedConnector) {
             connectorToUse = injectedConnector;
+        } else {
+            // Fallback to first available
+            connectorToUse = connectors[0];
         }
 
         if (connectorToUse) {
@@ -201,7 +210,7 @@ export default function HomeView() {
                             }}
                         />
                         <div className="w-64 h-64 md:w-80 md:h-80">
-                            <CoreVisual heat={0.9} /> {/* Force meltdown red for Home */}
+                            <CoreVisual heat={heat || 0.1} />
                         </div>
                     </motion.div>
                 )}
