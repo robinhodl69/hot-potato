@@ -174,22 +174,16 @@ export default function HomeView() {
                         <GameStatusPanel />
 
                         {/* CTA Button */}
+                        {/* CTA Button (DISABLED FOR ANNOUNCEMENT PHASE) */}
                         <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={handleStartChallenge}
-                            className={`group relative w-full py-5 font-black uppercase text-sm overflow-hidden border-2 transition-all duration-300 shadow-[0_0_20px_rgba(0,0,0,0.5)] ${isMelting
-                                ? 'bg-red-600 border-red-600 text-white hover:bg-red-500 hover:border-red-500 hover:shadow-[0_0_30px_rgba(220,38,38,0.6)]'
-                                : 'bg-white border-white text-black hover:bg-gray-200 hover:border-gray-200 hover:shadow-[0_0_30px_rgba(255,255,255,0.6)]'
-                                }`}
+                            className={`group relative w-full py-5 font-black uppercase text-sm overflow-hidden border-2 transition-all duration-300 shadow-none bg-white/10 border-white/20 text-white cursor-not-allowed`}
                             style={{
                                 fontFamily: "'Orbitron', sans-serif",
                                 letterSpacing: '0.2em',
                             }}
                         >
                             <span className="relative z-10 flex items-center justify-center gap-3">
-                                START CHALLENGE
-                                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                SYSTEM STANDBY // SOON
                             </span>
                         </motion.button>
 
