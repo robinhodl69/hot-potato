@@ -240,9 +240,24 @@ export default function HomeView() {
                                     )}
                                     <span className="truncate">OPERATOR: {farcasterUser?.username ? `@${farcasterUser.username}` : formatAddress(address)}</span>
                                 </div>
-                                <div className="w-full py-2 text-center text-[10px] text-white/30 font-bold uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                                    SYSTEM STANDBY // GAME LOCKED
-                                </div>
+                                <motion.button
+                                    whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(0, 255, 255, 0.6)' }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => {
+                                        play('click');
+                                        navigate('/game');
+                                    }}
+                                    className="w-full py-5 font-black uppercase text-sm overflow-hidden border-2 transition-all duration-300 bg-cyan-500 border-cyan-400 text-black shadow-[0_0_20px_rgba(0,255,255,0.4)] relative group"
+                                    style={{
+                                        fontFamily: "'Orbitron', sans-serif",
+                                        letterSpacing: '0.2em',
+                                    }}
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                                    <span className="relative z-10 flex items-center justify-center gap-3">
+                                        START CHALLENGE <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    </span>
+                                </motion.button>
                             </div>
                         )}
 

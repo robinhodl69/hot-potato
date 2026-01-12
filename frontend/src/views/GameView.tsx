@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, AlertTriangle, User, Flame, Target, CircleHelp } from 'lucide-react';
+import { Zap, AlertTriangle, User, Flame, Target, CircleHelp, Share2, Twitter, Loader2, ExternalLink } from 'lucide-react';
 import { sdk } from '@farcaster/miniapp-sdk';
 
 import CoreVisual from '../components/core/CoreVisual';
@@ -116,6 +116,8 @@ export default function GameView() {
     // ACTIONS
     // ========================
     const [targetAddress, setTargetAddress] = useState('');
+    const [isResolving, setIsResolving] = useState(false);
+    const [resolveError, setResolveError] = useState<string | null>(null);
 
     const handleGrabCore = () => {
         play('click');
@@ -127,14 +129,45 @@ export default function GameView() {
         });
     };
 
-    const handleTransfer = () => {
+    const handleTransfer = async () => {
         if (!targetAddress) return;
         play('click');
+        setResolveError(null);
+
+        let finalAddress = targetAddress.trim();
+
+        // Handle Resolution
+        if (finalAddress.startsWith('@')) {
+            setIsResolving(true);
+            try {
+                const username = finalAddress.slice(1);
+                const response = await fetch(`https://searchcaster.xyz/api/profiles?username=${username}`);
+                const data = await response.json();
+
+                if (data && data.length > 0 && data[0].connectedAddress) {
+                    finalAddress = data[0].connectedAddress;
+                } else {
+                    throw new Error('User not found or no linked address');
+                }
+            } catch (err) {
+                console.error('Resolution failed:', err);
+                setResolveError('COULD NOT RESOLVE HANDLE');
+                setIsResolving(false);
+                return;
+            }
+            setIsResolving(false);
+        }
+
+        if (!finalAddress.startsWith('0x')) {
+            setResolveError('INVALID ADDRESS FORMAT');
+            return;
+        }
+
         writeContract({
             address: CONTRACT_ADDRESS as `0x${string}`,
             abi: TheArbitrumCoreAbi,
             functionName: 'passTheCore',
-            args: [targetAddress as `0x${string}`],
+            args: [finalAddress as `0x${string}`],
         });
     };
 
@@ -260,20 +293,45 @@ export default function GameView() {
                         <div className="space-y-2">
                             <input
                                 type="text"
-                                placeholder="0x... recipient address"
+                                placeholder="@username or 0x address"
                                 value={targetAddress}
-                                onChange={(e) => setTargetAddress(e.target.value)}
-                                className={`w-full px-4 py-3 bg-black/40 backdrop-blur-sm border rounded-sm font-data text-sm placeholder:opacity-40 focus:outline-none transition-all ${isMelting
-                                    ? 'border-meltdown/30 focus:border-meltdown/80 focus:shadow-glow-meltdown'
-                                    : 'border-stable/20 focus:border-stable/60 focus:shadow-glow-stable'
+                                onChange={(e) => {
+                                    setTargetAddress(e.target.value);
+                                    if (resolveError) setResolveError(null);
+                                }}
+                                disabled={isResolving || isPending || isConfirming}
+                                className={`w-full px-4 py-3 bg-black/40 backdrop-blur-sm border rounded-sm font-data text-sm placeholder:opacity-40 focus:outline-none transition-all ${resolveError
+                                        ? 'border-red-500/50 shadow-[0_0_10px_rgba(255,0,0,0.2)]'
+                                        : isMelting
+                                            ? 'border-meltdown/30 focus:border-meltdown/80 focus:shadow-glow-meltdown'
+                                            : 'border-stable/20 focus:border-stable/60 focus:shadow-glow-stable'
                                     }`}
                             />
+
+                            {resolveError && (
+                                <div className="text-[10px] text-red-500 font-bold uppercase tracking-widest text-center animate-pulse">
+                                    ⚠ {resolveError}
+                                </div>
+                            )}
+
                             <button
                                 onClick={handleTransfer}
-                                disabled={!targetAddress || isPending || isConfirming}
-                                className={`w-full ${isMelting ? 'btn btn-danger' : 'btn btn-primary'}`}
+                                disabled={!targetAddress || isPending || isConfirming || isResolving}
+                                className={`w-full ${isMelting ? 'btn btn-danger' : 'btn btn-primary'} flex items-center justify-center gap-2`}
                             >
-                                {isPending || isConfirming ? 'TRANSMITTING...' : 'EJECT CORE →'}
+                                {isResolving ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        RESOLVING STATUS...
+                                    </>
+                                ) : isPending || isConfirming ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        TRANSMITTING...
+                                    </>
+                                ) : (
+                                    'EJECT CORE →'
+                                )}
                             </button>
                         </div>
                     ) : canGrab ? (
@@ -299,16 +357,40 @@ export default function GameView() {
                         />
                     )}
 
-                    {/* Success Toast */}
+                    {/* Success Toast & Sharing */}
                     <AnimatePresence>
                         {isConfirmed && (
                             <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="glass-panel glass-panel-stable p-3 text-center"
+                                className="glass-panel glass-panel-stable p-4 text-center space-y-3"
                             >
-                                <span className="font-data text-xs text-stable">✓ TRANSACTION CONFIRMED</span>
+                                <div className="flex items-center justify-center gap-2 text-stable font-bold text-xs uppercase tracking-widest">
+                                    <Zap className="w-4 h-4" />
+                                    CORE EJECTED SUCCESSFULLY
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <a
+                                        href={`https://warpcast.com/~/compose?text=${encodeURIComponent(`⚡ I just passed The @arbitrum Core! The network stability is holding.\n\nPlay here: https://hot-potato-frontend.vercel.app`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="py-2 bg-purple-600/20 border border-purple-500/50 rounded flex items-center justify-center gap-2 text-[10px] font-bold text-purple-400 hover:bg-purple-600/30 transition-all"
+                                    >
+                                        <Share2 className="w-3 h-3" />
+                                        WARPCAST
+                                    </a>
+                                    <a
+                                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`⚡ I just passed The Arbitrum Core! The network stability is holding. @arbitrum\n\nPlay here: https://hot-potato-frontend.vercel.app`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="py-2 bg-blue-400/10 border border-blue-400/30 rounded flex items-center justify-center gap-2 text-[10px] font-bold text-blue-400 hover:bg-blue-400/20 transition-all"
+                                    >
+                                        <Twitter className="w-3 h-3" />
+                                        TWITTER / X
+                                    </a>
+                                </div>
                             </motion.div>
                         )}
                     </AnimatePresence>

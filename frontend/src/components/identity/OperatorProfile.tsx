@@ -1,4 +1,4 @@
-import { Share2, Target, ExternalLink } from 'lucide-react';
+import { Share2, Target, ExternalLink, Twitter } from 'lucide-react';
 import Jazzicon, { jsNumberForAddress } from 'react-jazzicon';
 import { sdk } from '@farcaster/miniapp-sdk';
 
@@ -12,17 +12,17 @@ interface OperatorProfileProps {
 export default function OperatorProfile({ address, isPreviousHolder, isMe, farcasterUser }: OperatorProfileProps) {
     const safeAddress = address || '0x0000000000000000000000000000000000000000';
 
-    // Share Intent Logic
-    const handleShare = () => {
-        const text = `⚡ I just passed The Arbitrum Core to ${address}! The network stability is holding.\n\nCheck the status in the Mini-App!`;
+    // Unified Share Logic
+    const handleShareWarpcast = () => {
+        const text = `⚡ I just passed The @arbitrum Core to ${address}! The network stability is holding.\n\nPlay here: https://hot-potato-frontend.vercel.app`;
         const url = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}`;
+        try { sdk.actions.openUrl(url); } catch { window.open(url, '_blank'); }
+    };
 
-        // Attempt to open via SDK first, fallback to window.open
-        try {
-            sdk.actions.openUrl(url);
-        } catch {
-            window.open(url, '_blank');
-        }
+    const handleShareTwitter = () => {
+        const text = `⚡ I just passed The Arbitrum Core to ${address}! The network stability is holding. @arbitrum\n\nPlay here: https://hot-potato-frontend.vercel.app`;
+        const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
     };
 
     const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -79,13 +79,22 @@ export default function OperatorProfile({ address, isPreviousHolder, isMe, farca
             {/* Actions */}
             <div className="grid grid-cols-1 gap-3 pt-2">
                 {isPreviousHolder && (
-                    <button
-                        onClick={handleShare}
-                        className="btn btn-primary w-full shadow-[0_0_15px_rgba(0,255,255,0.3)] flex items-center justify-center gap-2 group"
-                    >
-                        <Share2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                        ANNOUNCE TRANSFER
-                    </button>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button
+                            onClick={handleShareWarpcast}
+                            className="py-3 bg-purple-600/20 border border-purple-500/50 rounded flex items-center justify-center gap-2 text-[10px] font-bold text-purple-400 hover:bg-purple-600/30 transition-all shadow-[0_0_10px_rgba(168,85,247,0.2)]"
+                        >
+                            <Share2 className="w-4 h-4" />
+                            WARPCAST
+                        </button>
+                        <button
+                            onClick={handleShareTwitter}
+                            className="py-3 bg-blue-400/10 border border-blue-400/30 rounded flex items-center justify-center gap-2 text-[10px] font-bold text-blue-400 hover:bg-blue-400/20 transition-all shadow-[0_0_10px_rgba(96,165,250,0.1)]"
+                        >
+                            <Twitter className="w-4 h-4" />
+                            TWITTER / X
+                        </button>
+                    </div>
                 )}
 
                 <a
