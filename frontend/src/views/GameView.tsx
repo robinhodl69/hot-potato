@@ -161,11 +161,15 @@ export default function GameView() {
 
         let finalAddress = targetAddress.trim();
 
-        // Handle Resolution
-        if (finalAddress.startsWith('@')) {
+        // Handle Resolution (Address vs Farcaster Handle)
+        const isHex = /^0x[a-fA-F0-9]{40}$/.test(finalAddress);
+
+        if (!isHex) {
             setIsResolving(true);
+            // Auto-strip '@' if they put it, regardless of where they are in the logic
             const username = finalAddress.startsWith('@') ? finalAddress.slice(1) : finalAddress;
             setLastRecipientHandle(username);
+
             try {
                 const response = await fetch(`https://searchcaster.xyz/api/profiles?username=${username}`);
                 const data = await response.json();
@@ -173,20 +177,23 @@ export default function GameView() {
                 if (data && data.length > 0 && data[0].connectedAddress) {
                     finalAddress = data[0].connectedAddress;
                 } else {
-                    throw new Error('User not found or no linked address');
+                    setResolveError('COULD NOT RESOLVE HANDLE');
+                    setIsResolving(false);
+                    return;
                 }
             } catch (err) {
-                console.error('Resolution failed:', err);
-                setResolveError('COULD NOT RESOLVE HANDLE');
+                setResolveError('RESOLUTION ENGINE OFFLINE');
                 setIsResolving(false);
                 return;
             }
-            setIsResolving(false);
         } else {
             setLastRecipientHandle(null);
         }
 
-        if (!finalAddress.startsWith('0x')) {
+        setIsResolving(false);
+
+        // After resolution, ensure finalAddress is a valid 0x address
+        if (!/^0x[a-fA-F0-9]{40}$/.test(finalAddress)) {
             setResolveError('INVALID ADDRESS FORMAT');
             return;
         }
