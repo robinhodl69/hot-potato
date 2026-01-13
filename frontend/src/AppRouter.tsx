@@ -176,9 +176,13 @@ function AppContent() {
     const currentHolder = gameState?.[0];
     const previousHolder = gameState?.[1];
     const lastTransferBlock = gameState?.[2] || 0n;
-    const isMelting = gameState?.[3] || false;
-    const blocksHeld = blockNumber ? Number(blockNumber - lastTransferBlock) : 0;
-    const heat = blocksHeld / SAFE_LIMIT_BLOCKS;
+
+    // Fix: If lastTransferBlock is 0 (not initialized), heat is 0
+    const blocksHeld = (blockNumber && lastTransferBlock > 0n) ? Number(blockNumber - lastTransferBlock) : 0;
+    const heat = Math.min(Math.max(0, blocksHeld / SAFE_LIMIT_BLOCKS), 5); // Clamp to 0-5x meltdown
+
+    // Robust isMelting: True if contract says so OR if local heat is >= 1.0
+    const isMelting = gameState?.[3] || heat >= 1.0;
 
     const gameStateValue: GameStateContextType = {
         heat,

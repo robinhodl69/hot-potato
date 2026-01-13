@@ -7,8 +7,8 @@
  * - StabilityAlerts: Critical threshold logs
  * - TransactionHashLink: Arbiscan links
  */
-import { useState } from 'react';
-import { useWatchContractEvent, useBlockNumber } from 'wagmi';
+import { useEffect, useState } from 'react';
+import { useWatchContractEvent, useBlockNumber, usePublicClient } from 'wagmi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, AlertCircle, ExternalLink, Zap, Clock } from 'lucide-react';
 
@@ -31,6 +31,59 @@ export default function SystemLogsView() {
     const { heat, isMelting } = useGameState();
     const { data: blockNumber } = useBlockNumber({ watch: true });
     const [logs, setLogs] = useState<LogEntry[]>([]);
+    const publicClient = usePublicClient();
+
+    // Fetch historical logs on mount
+    useEffect(() => {
+        const fetchHistory = async () => {
+            if (!publicClient) return;
+            try {
+                const currentBlock = await publicClient.getBlockNumber();
+                console.log('[DEBUG] Fetching logs from block:', Number(currentBlock) - 50000);
+
+                const pastLogs = await publicClient.getLogs({
+                    address: CONTRACT_ADDRESS as `0x${string}`,
+                    event: {
+                        type: 'event',
+                        name: 'Transfer',
+                        inputs: [
+                            { type: 'address', name: 'from', indexed: true },
+                            { type: 'address', name: 'to', indexed: true },
+                            { type: 'uint256', name: 'tokenId', indexed: true },
+                        ],
+                    },
+                    fromBlock: currentBlock > 50000n ? currentBlock - 50000n : 0n,
+                });
+
+                console.log('[DEBUG] Historical logs found:', pastLogs.length);
+
+                const formattedLogs: LogEntry[] = pastLogs.map(log => ({
+                    type: 'transfer' as const,
+                    message: `Core transferred`,
+                    from: log.args.from as string,
+                    to: log.args.to as string,
+                    txHash: log.transactionHash as string || undefined,
+                    blockNumber: log.blockNumber || 0n,
+                    timestamp: Date.now() - Number(currentBlock - (log.blockNumber || 0n)) * 2000, // Approx timestamp
+                })).reverse();
+
+                setLogs(prev => {
+                    const combined = [...prev, ...formattedLogs];
+                    // Uniquify by txHash
+                    const seen = new Set<string>();
+                    return combined.filter(l => {
+                        if (!l.txHash) return true;
+                        if (seen.has(l.txHash)) return false;
+                        seen.add(l.txHash);
+                        return true;
+                    }).sort((a, b) => Number(b.blockNumber - a.blockNumber)).slice(0, 50);
+                });
+            } catch (err) {
+                console.error('Failed to fetch historical logs:', err);
+            }
+        };
+        fetchHistory();
+    }, [publicClient]);
 
     // Watch Transfer events
     useWatchContractEvent({
@@ -38,22 +91,34 @@ export default function SystemLogsView() {
         abi: TheArbitrumCoreAbi,
         eventName: 'Transfer',
         onLogs(eventLogs) {
-            const newLogs = eventLogs.map(log => ({
+            const newLogs: LogEntry[] = eventLogs.map(log => ({
                 type: 'transfer' as const,
                 message: `Core transferred`,
-                from: (log as any).args?.from,
-                to: (log as any).args?.to,
-                txHash: log.transactionHash,
+                from: (log as any).args?.from as string,
+                to: (log as any).args?.to as string,
+                txHash: log.transactionHash as string || undefined,
                 blockNumber: log.blockNumber || 0n,
                 timestamp: Date.now(),
             }));
-            setLogs(prev => [...newLogs, ...prev].slice(0, 50));
+
+            setLogs(prev => {
+                const combined = [...newLogs, ...prev];
+                const seen = new Set<string>();
+                return combined.filter(l => {
+                    if (!l.txHash) return true;
+                    if (seen.has(l.txHash)) return false;
+                    seen.add(l.txHash);
+                    return true;
+                }).slice(0, 50);
+            });
         },
     });
 
     // Generate stability alerts based on heat
+    // Clamp stability at 0
+    const stabilityPercent = Math.max(0, (1 - heat) * 100);
     const alerts = heat >= 0.8 ? [
-        { level: 'CRITICAL', message: `Stability at ${((1 - heat) * 100).toFixed(0)}% - MELTDOWN IMMINENT` },
+        { level: 'CRITICAL', message: `Stability at ${stabilityPercent.toFixed(0)}% - MELTDOWN IMMINENT` },
     ] : heat >= 0.5 ? [
         { level: 'WARNING', message: `Stability below 50% - Monitor closely` },
     ] : [];
@@ -128,7 +193,7 @@ export default function SystemLogsView() {
                         ) : (
                             logs.map((log, i) => (
                                 <motion.div
-                                    key={log.txHash + i}
+                                    key={log.txHash || i}
                                     initial={{ opacity: 0, y: -10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     className="py-2 border-b border-white/5 last:border-0"

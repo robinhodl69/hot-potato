@@ -58,7 +58,7 @@ export default function GameView() {
     // ========================
     const isOwner = address?.toLowerCase() === currentHolder?.toLowerCase();
     const isPreviousHolder = address?.toLowerCase() === previousHolder?.toLowerCase();
-    const canGrab = isConnected && !isOwner && (isMelting || (isConnected && !isPreviousHolder));
+    const canGrab = isConnected && !isOwner && isMelting;
 
     // Stability calculation: (SAFE_LIMIT - blocksHeld) / SAFE_LIMIT * 100
     const stabilityPercent = Math.max(0, Math.min(100, (1 - heat) * 100));
