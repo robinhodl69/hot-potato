@@ -112,7 +112,11 @@ export default function GameView() {
                 const cleanAddress = currentHolder.toLowerCase();
                 console.log('[DEBUG] Fetching Farcaster profile for:', cleanAddress);
 
-                const response = await fetch(`https://searchcaster.xyz/api/profiles?connected_address=${cleanAddress}`);
+                // Using AllOrigins proxy to bypass CORS blocks in the web environment
+                const targetUrl = `https://searchcaster.xyz/api/profiles?connected_address=${cleanAddress}`;
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+
+                const response = await fetch(proxyUrl);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const data = await response.json();
@@ -127,7 +131,7 @@ export default function GameView() {
                     setHolderFarcasterUser(null);
                 }
             } catch (err) {
-                console.warn('Failed to fetch holder profile. This is usually a browser block (CORS/Shields):', err);
+                console.warn('Failed to fetch holder profile via proxy:', err);
             }
         };
         fetchHolderProfile();
@@ -180,9 +184,12 @@ export default function GameView() {
 
             try {
                 const cleanUsername = username.toLowerCase().trim();
-                console.log('[DEBUG] Resolving handle:', cleanUsername);
+                console.log('[DEBUG] Resolving handle via proxy:', cleanUsername);
 
-                const response = await fetch(`https://searchcaster.xyz/api/profiles?username=${encodeURIComponent(cleanUsername)}`);
+                const targetUrl = `https://searchcaster.xyz/api/profiles?username=${encodeURIComponent(cleanUsername)}`;
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+
+                const response = await fetch(proxyUrl);
 
                 if (!response.ok) {
                     setResolveError(`API ERROR: ${response.status}`);
@@ -202,7 +209,7 @@ export default function GameView() {
                 }
             } catch (err) {
                 console.error('Handle resolution failed:', err);
-                setResolveError('OS SIGNALS BLOCKED (CORS/NETWORK)');
+                setResolveError('PROXY ERROR: ENGINE OFFLINE');
                 setIsResolving(false);
                 return;
             }
