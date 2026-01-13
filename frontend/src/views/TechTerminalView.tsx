@@ -7,11 +7,12 @@
  * - GlobalParams: SAFE_LIMIT, COOLDOWN values
  * - NetworkStatus: Arbitrum Sepolia info
  */
-import { useBlockNumber, useGasPrice, useChainId } from 'wagmi';
-import { Cpu, FileCode, Settings, Wifi, ExternalLink, Copy, Check } from 'lucide-react';
+import { useBlockNumber, useGasPrice, useChainId, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { Cpu, FileCode, Settings, Wifi, ExternalLink, Copy, Check, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
 
 import { useGameState } from '../AppRouter';
+import TheArbitrumCoreAbi from '../abi/TheArbitrumCore.json';
 
 const CONTRACT_ADDRESS = "0x533e35450f99a96b3e55a9a97c864a17d11e3edf";
 const SAFE_LIMIT_BLOCKS = 900;
@@ -23,6 +24,11 @@ export default function TechTerminalView() {
     const { data: gasPrice } = useGasPrice();
     const chainId = useChainId();
     const [copied, setCopied] = useState(false);
+
+    const { writeContract, data: txHash, isPending } = useWriteContract();
+    const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+        hash: txHash,
+    });
 
     const handleCopyAddress = () => {
         navigator.clipboard.writeText(CONTRACT_ADDRESS);
