@@ -19,7 +19,7 @@ import { useSynth } from './hooks/useSynth';
 import TheArbitrumCoreAbi from './abi/TheArbitrumCore.json';
 import NetworkGuard from './components/auth/NetworkGuard';
 
-const CONTRACT_ADDRESS = "0x963d9779eb0de38878a8763f9e840e3622cfba7e";
+const CONTRACT_ADDRESS = "0x533e35450f99a96b3e55a9a97c864a17d11e3edf";
 const SAFE_LIMIT_BLOCKS = 900;
 
 // Global game state context

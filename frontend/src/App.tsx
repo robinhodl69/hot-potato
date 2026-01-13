@@ -20,7 +20,7 @@ import CoreVisual from "./components/core/CoreVisual";
 import RetroGrid from "./components/effects/RetroGrid";
 import { useSynth } from "./hooks/useSynth";
 
-const CONTRACT_ADDRESS = "0x963d9779eb0de38878a8763f9e840e3622cfba7e";
+const CONTRACT_ADDRESS = "0x533e35450f99a96b3e55a9a97c864a17d11e3edf";
 const SAFE_LIMIT_BLOCKS = 900;
 
 export default function App() {
@@ -194,8 +194,8 @@ export default function App() {
                 value={targetAddress}
                 onChange={(e) => setTargetAddress(e.target.value)}
                 className={`w-full px-4 py-3 bg-black/40 backdrop-blur-sm border rounded-sm font-mono text-sm placeholder:opacity-40 focus:outline-none transition-all ${isMelting
-                    ? 'border-orange-500/30 focus:border-orange-500/80 focus:shadow-[0_0_15px_rgba(255,62,0,0.3)]'
-                    : 'border-cyan-500/20 focus:border-cyan-500/60 focus:shadow-[0_0_15px_rgba(0,255,255,0.2)]'
+                  ? 'border-orange-500/30 focus:border-orange-500/80 focus:shadow-[0_0_15px_rgba(255,62,0,0.3)]'
+                  : 'border-cyan-500/20 focus:border-cyan-500/60 focus:shadow-[0_0_15px_rgba(0,255,255,0.2)]'
                   }`}
               />
               <button

@@ -101,6 +101,34 @@ impl TheArbitrumCore {
         self.previous_holder.set(sender);
         self.current_holder.set(to);
         self.last_transfer_block.set(U256::from(self.vm().block_number()));
+        Ok(())
+    }
+
+    /// Secondary game action: Seize the Core if it has entered meltdown
+    pub fn grab_core(&mut self) -> Result<(), Vec<u8>> {
+        let sender = self.vm().msg_sender();
+        let holder = self.current_holder.get();
+        let _prev = self.previous_holder.get();
+        let melting = self.is_melting()?;
+        
+        if !melting {
+            return Err(b"Core is stable".to_vec());
+        }
+        
+        if sender == holder {
+            return Err(b"You already hold the Core".to_vec());
+        }
+
+        // Settle points for the penalized holder
+        self._settle_points(holder)?;
+        
+        // Execute the transfer (ERC721)
+        self.erc721._transfer(holder, sender, U256::from(TOKEN_ID))?;
+        
+        // Update game state
+        self.previous_holder.set(holder);
+        self.current_holder.set(sender);
+        self.last_transfer_block.set(U256::from(self.vm().block_number()));
         self.last_activity_block.set(U256::from(self.vm().block_number()));
         
         Ok(())

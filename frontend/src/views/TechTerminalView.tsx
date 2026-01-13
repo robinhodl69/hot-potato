@@ -13,7 +13,7 @@ import { useState } from 'react';
 
 import { useGameState } from '../AppRouter';
 
-const CONTRACT_ADDRESS = "0x963d9779eb0de38878a8763f9e840e3622cfba7e";
+const CONTRACT_ADDRESS = "0x533e35450f99a96b3e55a9a97c864a17d11e3edf";
 const SAFE_LIMIT_BLOCKS = 900;
 const BLOCK_TIME_SECONDS = 2;
 
@@ -152,30 +152,31 @@ export default function TechTerminalView() {
                 </div>
             </div>
 
-            {/* Functions */}
-            <div className={`glass-panel ${isMelting ? 'glass-panel-meltdown' : 'glass-panel-stable'} p-4`}>
+            {/* Administrative Actions */}
+            <div className={`glass-panel border-meltdown/30 p-4`}>
                 <div className="flex items-center gap-2 mb-4">
-                    <FileCode className="w-4 h-4 text-stable" />
-                    <span className="font-heading text-xs uppercase tracking-widest font-bold">ABI FUNCTIONS</span>
+                    <Settings className="w-4 h-4 text-meltdown" />
+                    <span className="font-heading text-xs uppercase tracking-widest font-bold text-meltdown">SYSTEM INITIALIZATION</span>
                 </div>
 
-                <div className="font-mono text-xs space-y-1 opacity-70">
-                    <div className="py-1 border-b border-white/5">
-                        <span className="text-stable">fn</span> gameState() → (address, address, u256, bool)
-                    </div>
-                    <div className="py-1 border-b border-white/5">
-                        <span className="text-stable">fn</span> grabCore() → void
-                    </div>
-                    <div className="py-1 border-b border-white/5">
-                        <span className="text-stable">fn</span> passTheCore(to: address) → void
-                    </div>
-                    <div className="py-1 border-b border-white/5">
-                        <span className="text-stable">fn</span> getPoints(addr: address) → u256
-                    </div>
-                    <div className="py-1">
-                        <span className="text-stable">fn</span> registerFid(fid: u256) → void
-                    </div>
-                </div>
+                <p className="text-[10px] opacity-60 mb-4 leading-relaxed italic">
+                    ⚠ Warning: Initialization will mint the primary Core (Token ID 1) to the admin address.
+                    This should only be performed once per deployment.
+                </p>
+
+                <button
+                    onClick={() => {
+                        writeContract({
+                            address: CONTRACT_ADDRESS as `0x${string}`,
+                            abi: TheArbitrumCoreAbi,
+                            functionName: 'initialize',
+                        });
+                    }}
+                    disabled={isPending || isConfirming || isConfirmed}
+                    className="w-full py-4 bg-meltdown/20 hover:bg-meltdown/30 border border-meltdown/50 rounded-sm font-heading text-sm font-bold text-meltdown tracking-[0.3em] transition-all hover:shadow-glow-meltdown disabled:opacity-50"
+                >
+                    {isPending || isConfirming ? 'EXECUTING INITIALIZATION...' : isConfirmed ? 'CORE INITIALIZED' : 'INITIALIZE SYSTEM CORE'}
+                </button>
             </div>
         </div>
     );
