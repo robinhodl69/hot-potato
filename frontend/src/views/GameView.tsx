@@ -108,18 +108,26 @@ export default function GameView() {
         const fetchHolderProfile = async () => {
             if (!currentHolder || currentHolder === '0x0000000000000000000000000000000000000000') return;
             try {
-                const response = await fetch(`https://searchcaster.xyz/api/profiles?connected_address=${currentHolder}`);
+                // Searchcaster prefers lowercased addresses
+                const cleanAddress = currentHolder.toLowerCase();
+                console.log('[DEBUG] Fetching Farcaster profile for:', cleanAddress);
+
+                const response = await fetch(`https://searchcaster.xyz/api/profiles?connected_address=${cleanAddress}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
                 const data = await response.json();
                 if (data && data.length > 0) {
+                    console.log('[DEBUG] Profile found:', data[0].body.username);
                     setHolderFarcasterUser({
                         username: data[0].body.username,
                         pfpUrl: data[0].body.avatar
                     });
                 } else {
+                    console.log('[DEBUG] No Farcaster profile found for this address');
                     setHolderFarcasterUser(null);
                 }
             } catch (err) {
-                console.warn('Failed to fetch holder profile:', err);
+                console.warn('Failed to fetch holder profile. This is usually a browser block (CORS/Shields):', err);
             }
         };
         fetchHolderProfile();
@@ -171,18 +179,30 @@ export default function GameView() {
             setLastRecipientHandle(username);
 
             try {
-                const response = await fetch(`https://searchcaster.xyz/api/profiles?username=${username}`);
+                const cleanUsername = username.toLowerCase().trim();
+                console.log('[DEBUG] Resolving handle:', cleanUsername);
+
+                const response = await fetch(`https://searchcaster.xyz/api/profiles?username=${encodeURIComponent(cleanUsername)}`);
+
+                if (!response.ok) {
+                    setResolveError(`API ERROR: ${response.status}`);
+                    setIsResolving(false);
+                    return;
+                }
+
                 const data = await response.json();
+                console.log('[DEBUG] Resolution data:', data);
 
                 if (data && data.length > 0 && data[0].connectedAddress) {
                     finalAddress = data[0].connectedAddress;
                 } else {
-                    setResolveError('COULD NOT RESOLVE HANDLE');
+                    setResolveError('USER NOT FOUND (NO WALLET)');
                     setIsResolving(false);
                     return;
                 }
             } catch (err) {
-                setResolveError('RESOLUTION ENGINE OFFLINE');
+                console.error('Handle resolution failed:', err);
+                setResolveError('OS SIGNALS BLOCKED (CORS/NETWORK)');
                 setIsResolving(false);
                 return;
             }
