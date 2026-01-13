@@ -225,6 +225,20 @@ export default function GameView() {
             return;
         }
 
+        // Anti-Point Farming Check: Cannot pass back to previous holder
+        if (finalAddress.toLowerCase() === previousHolder?.toLowerCase()) {
+            setResolveError('CANNOT PASS BACK TO PREVIOUS');
+            setIsResolving(false);
+            return;
+        }
+
+        setIsResolving(false);
+        // After resolution, ensure finalAddress is a valid 0x address
+        if (!/^0x[a-fA-F0-9]{40}$/.test(finalAddress)) {
+            setResolveError('INVALID ADDRESS FORMAT');
+            return;
+        }
+
         writeContract({
             address: CONTRACT_ADDRESS as `0x${string}`,
             abi: TheArbitrumCoreAbi,
