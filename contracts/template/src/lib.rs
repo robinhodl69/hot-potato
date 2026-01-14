@@ -1,5 +1,6 @@
-// The Arbitrum Core - Hot Potato NFT Contract
-// Implements possession-based scoring and meltdown penalties.
+// The Arbitrum Core v2 - Phoenix Model
+// Hot Potato NFT with generational respawn mechanics.
+// When a Core "dies" (holder inactive), a new one rises from its ashes.
 
 #![cfg_attr(not(any(feature = "export-abi", test)), no_std, no_main)]
 extern crate alloc;
@@ -19,7 +20,7 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 }
 use openzeppelin_stylus::token::erc721::Erc721;
 
-/// The Arbitrum Core - Hot Potato NFT Contract
+/// The Arbitrum Core v2 - Phoenix Model Contract
 #[entrypoint]
 #[storage]
 pub struct TheArbitrumCore {
@@ -34,6 +35,11 @@ pub struct TheArbitrumCore {
     pub game_active: StorageBool,
     pub core_minted: StorageBool,
 
+    // === Phoenix Model (v2) ===
+    pub active_core_id: StorageU256,        // Currently active Core token ID
+    pub total_cores_minted: StorageU256,    // Generation counter
+    pub dead_core_holders: StorageMap<U256, StorageAddress>,  // CoreID → Last holder (shame)
+
     // === Scoring & Anti-Cheat ===
     pub points_balance: StorageMap<Address, StorageU256>,
     pub address_to_fid: StorageMap<Address, StorageU256>,
@@ -44,26 +50,30 @@ pub struct TheArbitrumCore {
 }
 
 // Logic Constants
-const TOKEN_ID: u64 = 1;
 const POINTS_PER_INTERVAL: u64 = 10;
-const INTERVAL_BLOCKS: u64 = 100;     // Every 100 blocks
-const SAFE_LIMIT_BLOCKS: u64 = 900;   // 30 Minutes (~1800s / 2s block)
-const BURN_RATE_BPS: u64 = 500;       // 5% in Basis Points
-const BURN_INTERVAL_BLOCKS: u64 = 30; // 1 Minute (~60s / 2s block)
-const INACTIVITY_BLOCKS: u64 = 86400; // ~48 hours at 2s blocks
+const INTERVAL_BLOCKS: u64 = 100;       // Every 100 blocks (~3.3 min)
+const SAFE_LIMIT_BLOCKS: u64 = 900;     // 30 Minutes (~1800s / 2s block)
+const BURN_RATE_BPS: u64 = 500;         // 5% in Basis Points
+const BURN_INTERVAL_BLOCKS: u64 = 30;   // 1 Minute (~60s / 2s block)
+const INACTIVITY_BLOCKS: u64 = 1800;    // 1 hour (v2: reduced from 48h)
+const PHOENIX_COOLDOWN: u64 = 900;      // 30 min after meltdown to spawn
 
 #[public]
 #[inherit(Erc721)]
 impl TheArbitrumCore {
-    /// Initialize the game and mint the one and only Core (ID: 1)
+    /// Initialize the game and mint the first Core (ID: 1)
     pub fn initialize(&mut self) -> Result<(), Vec<u8>> {
         if self.core_minted.get() {
             return Err(b"Core already minted".to_vec());
         }
         let admin = self.vm().msg_sender();
+        let first_core_id = U256::from(1);
+        
         self.admin.set(admin);
-        self.erc721._mint(admin, U256::from(TOKEN_ID))?;
+        self.erc721._mint(admin, first_core_id)?;
         self.current_holder.set(admin);
+        self.active_core_id.set(first_core_id);
+        self.total_cores_minted.set(first_core_id);
         self.last_transfer_block.set(U256::from(self.vm().block_number()));
         self.last_activity_block.set(U256::from(self.vm().block_number()));
         self.game_active.set(true);
@@ -75,6 +85,7 @@ impl TheArbitrumCore {
     pub fn pass_the_core(&mut self, to: Address) -> Result<(), Vec<u8>> {
         let sender = self.vm().msg_sender();
         let current = self.current_holder.get();
+        let active_id = self.active_core_id.get();
         
         if sender != current {
             return Err(b"Not the current holder".to_vec());
@@ -94,13 +105,14 @@ impl TheArbitrumCore {
         // Settle points for the sender before they lose the Core
         self._settle_points(sender)?;
         
-        // Execute the transfer (ERC721)
-        self.erc721._transfer(sender, to, U256::from(TOKEN_ID))?;
+        // Execute the transfer (ERC721) using the active core ID
+        self.erc721._transfer(sender, to, active_id)?;
         
         // Update game state
         self.previous_holder.set(sender);
         self.current_holder.set(to);
         self.last_transfer_block.set(U256::from(self.vm().block_number()));
+        self.last_activity_block.set(U256::from(self.vm().block_number()));
         Ok(())
     }
 
@@ -108,7 +120,7 @@ impl TheArbitrumCore {
     pub fn grab_core(&mut self) -> Result<(), Vec<u8>> {
         let sender = self.vm().msg_sender();
         let holder = self.current_holder.get();
-        let _prev = self.previous_holder.get();
+        let active_id = self.active_core_id.get();
         let melting = self.is_melting()?;
         
         if !melting {
@@ -123,13 +135,52 @@ impl TheArbitrumCore {
         self._settle_points(holder)?;
         
         // Execute the transfer (ERC721)
-        self.erc721._transfer(holder, sender, U256::from(TOKEN_ID))?;
+        self.erc721._transfer(holder, sender, active_id)?;
         
         // Update game state
         self.previous_holder.set(holder);
         self.current_holder.set(sender);
         self.last_transfer_block.set(U256::from(self.vm().block_number()));
         self.last_activity_block.set(U256::from(self.vm().block_number()));
+        
+        Ok(())
+    }
+
+    /// Phoenix Model: Spawn a new Core when the current one is dead
+    /// The old Core stays with the inactive holder as a "dead trophy"
+    pub fn spawn_new_core(&mut self) -> Result<(), Vec<u8>> {
+        let sender = self.vm().msg_sender();
+        let current_block = U256::from(self.vm().block_number());
+        let blocks_since_transfer = current_block - self.last_transfer_block.get();
+        
+        // Must be in meltdown AND past the phoenix cooldown
+        let meltdown_threshold = U256::from(SAFE_LIMIT_BLOCKS);
+        let phoenix_threshold = U256::from(SAFE_LIMIT_BLOCKS + PHOENIX_COOLDOWN);
+        
+        if blocks_since_transfer <= meltdown_threshold {
+            return Err(b"Core is still stable".to_vec());
+        }
+        
+        if blocks_since_transfer <= phoenix_threshold {
+            return Err(b"Phoenix cooldown not reached".to_vec());
+        }
+        
+        // Record the dead Core and its last holder
+        let old_core_id = self.active_core_id.get();
+        let old_holder = self.current_holder.get();
+        self.dead_core_holders.setter(old_core_id).set(old_holder);
+        
+        // Mint the new Core
+        let new_core_id = self.total_cores_minted.get() + U256::from(1);
+        self.erc721._mint(sender, new_core_id)?;
+        
+        // Update game state for the new Core
+        self.active_core_id.set(new_core_id);
+        self.total_cores_minted.set(new_core_id);
+        self.current_holder.set(sender);
+        self.previous_holder.set(Address::ZERO);  // Reset cooldown
+        self.last_transfer_block.set(current_block);
+        self.last_activity_block.set(current_block);
         
         Ok(())
     }
@@ -149,7 +200,7 @@ impl TheArbitrumCore {
             let meltdown_blocks = blocks_held - U256::from(SAFE_LIMIT_BLOCKS);
             let penalty_periods = meltdown_blocks / U256::from(BURN_INTERVAL_BLOCKS);
             
-            // 5% penalty per period (minized to total balance)
+            // 5% penalty per period (minimized to total balance)
             let penalty = balance * penalty_periods * U256::from(BURN_RATE_BPS) / U256::from(10000);
             balance = if penalty >= balance { U256::ZERO } else { balance - penalty };
         }
@@ -169,12 +220,29 @@ impl TheArbitrumCore {
         Ok(blocks_held > U256::from(SAFE_LIMIT_BLOCKS))
     }
 
-    pub fn game_state(&self) -> Result<(Address, Address, U256, bool), Vec<u8>> {
+    /// Check if the Core is ready for Phoenix respawn
+    pub fn can_spawn_new_core(&self) -> Result<bool, Vec<u8>> {
+        let blocks_held = U256::from(self.vm().block_number()) - self.last_transfer_block.get();
+        Ok(blocks_held > U256::from(SAFE_LIMIT_BLOCKS + PHOENIX_COOLDOWN))
+    }
+
+    /// Get the currently active Core ID
+    pub fn active_core(&self) -> Result<U256, Vec<u8>> {
+        Ok(self.active_core_id.get())
+    }
+
+    /// Get the last holder of a dead Core (Hall of Shame)
+    pub fn dead_core_holder(&self, core_id: U256) -> Result<Address, Vec<u8>> {
+        Ok(self.dead_core_holders.get(core_id))
+    }
+
+    pub fn game_state(&self) -> Result<(Address, Address, U256, bool, U256), Vec<u8>> {
         Ok((
             self.current_holder.get(),
             self.previous_holder.get(),
             self.last_transfer_block.get(),
             self.is_melting()?,
+            self.active_core_id.get(),  // v2: Include active core ID
         ))
     }
 
@@ -191,11 +259,20 @@ impl TheArbitrumCore {
             return Err(b"Not inactive long enough".to_vec());
         }
         
-        let current = self.current_holder.get();
-        self.erc721._transfer(current, sender, U256::from(TOKEN_ID))?;
+        // Use Phoenix spawn instead of forced transfer
+        let old_core_id = self.active_core_id.get();
+        let old_holder = self.current_holder.get();
+        self.dead_core_holders.setter(old_core_id).set(old_holder);
+        
+        let new_core_id = self.total_cores_minted.get() + U256::from(1);
+        self.erc721._mint(sender, new_core_id)?;
+        
+        self.active_core_id.set(new_core_id);
+        self.total_cores_minted.set(new_core_id);
         self.current_holder.set(sender);
         self.previous_holder.set(Address::ZERO);
         self.last_transfer_block.set(U256::from(self.vm().block_number()));
+        self.last_activity_block.set(U256::from(self.vm().block_number()));
         
         Ok(())
     }
@@ -219,15 +296,29 @@ impl TheArbitrumCore {
     }
 
     #[selector(name = "tokenURI")]
-    pub fn token_uri(&self, _token_id: U256) -> Result<String, Vec<u8>> {
-        let holder = self.current_holder.get();
-        let melting = self.is_melting()?;
-        let state = if melting { "MELTDOWN" } else { "STABLE" };
+    pub fn token_uri(&self, token_id: U256) -> Result<String, Vec<u8>> {
+        let active_id = self.active_core_id.get();
+        let is_dead = token_id != active_id;
+        let _holder = if is_dead {
+            self.dead_core_holders.get(token_id)
+        } else {
+            self.current_holder.get()
+        };
+        
+        let status = if is_dead {
+            "DEAD"
+        } else if self.is_melting()? {
+            "MELTDOWN"
+        } else {
+            "STABLE"
+        };
         
         let metadata = format!(
-            r#"{{"name":"The Core [Held by {}]","description":"Hot Potato NFT on Arbitrum. Pass it before it melts!","attributes":[{{"trait_type":"Status","value":"{}"}}]}}"#,
-            holder,
-            state
+            r#"{{"name":"The Core #{} [{}]","description":"Hot Potato NFT on Arbitrum. Pass it before it melts!","attributes":[{{"trait_type":"Status","value":"{}"}},{{"trait_type":"Generation","value":"{}"}}]}}"#,
+            token_id,
+            if is_dead { "DEAD" } else { "ACTIVE" },
+            status,
+            token_id
         );
         Ok(metadata)
     }

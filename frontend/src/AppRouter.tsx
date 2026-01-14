@@ -19,7 +19,7 @@ import { useSynth } from './hooks/useSynth';
 import TheArbitrumCoreAbi from './abi/TheArbitrumCore.json';
 import NetworkGuard from './components/auth/NetworkGuard';
 
-const CONTRACT_ADDRESS = "0x533e35450f99a96b3e55a9a97c864a17d11e3edf";
+const CONTRACT_ADDRESS = "0xe0687d9830081bbd7696f4d8a3a8169aaa986039";
 const SAFE_LIMIT_BLOCKS = 900;
 
 // Global game state context
@@ -29,6 +29,8 @@ interface GameStateContextType {
     currentHolder: string | undefined;
     previousHolder: string | undefined;
     blockNumber: bigint | undefined;
+    activeCoreId: bigint | undefined;
+    canSpawn: boolean;
 }
 
 const GameStateContext = createContext<GameStateContextType>({
@@ -37,6 +39,8 @@ const GameStateContext = createContext<GameStateContextType>({
     currentHolder: undefined,
     previousHolder: undefined,
     blockNumber: undefined,
+    activeCoreId: undefined,
+    canSpawn: false,
 });
 
 export const useGameState = () => useContext(GameStateContext);
@@ -165,17 +169,27 @@ function AppContent() {
     // Global contract state
     const { data: blockNumber } = useBlockNumber({ watch: true });
 
+    // Phoenix Model: game_state now returns 5 values
     const { data: gameState } = useReadContract({
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: TheArbitrumCoreAbi,
         functionName: 'gameState',
         query: { refetchInterval: 3000 }
-    }) as { data: [string, string, bigint, boolean] | undefined };
+    }) as { data: [string, string, bigint, boolean, bigint] | undefined };
+
+    // Phoenix Model: Check if new core can be spawned
+    const { data: canSpawnData } = useReadContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: TheArbitrumCoreAbi,
+        functionName: 'canSpawnNewCore',
+        query: { refetchInterval: 3000 }
+    }) as { data: boolean | undefined };
 
     // Derived state
     const currentHolder = gameState?.[0];
     const previousHolder = gameState?.[1];
     const lastTransferBlock = gameState?.[2] || 0n;
+    const activeCoreId = gameState?.[4];
 
     // Fix: If lastTransferBlock is 0 (not initialized), heat is 0
     const blocksHeld = (blockNumber && lastTransferBlock > 0n) ? Number(blockNumber - lastTransferBlock) : 0;
@@ -183,6 +197,7 @@ function AppContent() {
 
     // Robust isMelting: True if contract says so OR if local heat is >= 1.0
     const isMelting = gameState?.[3] || heat >= 1.0;
+    const canSpawn = canSpawnData || false;
 
     const gameStateValue: GameStateContextType = {
         heat,
@@ -190,6 +205,8 @@ function AppContent() {
         currentHolder,
         previousHolder,
         blockNumber,
+        activeCoreId,
+        canSpawn,
     };
 
     const location = useLocation();

@@ -15,7 +15,7 @@ import { Terminal, AlertCircle, ExternalLink, Zap, Clock } from 'lucide-react';
 import { useGameState } from '../AppRouter';
 import TheArbitrumCoreAbi from '../abi/TheArbitrumCore.json';
 
-const CONTRACT_ADDRESS = "0x533e35450f99a96b3e55a9a97c864a17d11e3edf";
+const CONTRACT_ADDRESS = "0xe0687d9830081bbd7696f4d8a3a8169aaa986039";
 
 interface LogEntry {
     type: 'transfer' | 'alert' | 'system';

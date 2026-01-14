@@ -21,14 +21,14 @@ import { useSynth } from '../hooks/useSynth';
 import { useGameState } from '../AppRouter';
 import TheArbitrumCoreAbi from '../abi/TheArbitrumCore.json';
 
-const CONTRACT_ADDRESS = "0x533e35450f99a96b3e55a9a97c864a17d11e3edf";
+const CONTRACT_ADDRESS = "0xe0687d9830081bbd7696f4d8a3a8169aaa986039";
 const SAFE_LIMIT_BLOCKS = 900;
 
 export default function GameView() {
     const { isConnected, address } = useAccount();
     const { connect, connectors } = useConnect();
     const { play } = useSynth();
-    const { heat, isMelting, currentHolder, previousHolder, blockNumber } = useGameState();
+    const { heat, isMelting, currentHolder, previousHolder, blockNumber, activeCoreId, canSpawn } = useGameState();
     const lastSonarTime = useRef(0);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
 
@@ -58,7 +58,17 @@ export default function GameView() {
     // ========================
     const isOwner = address?.toLowerCase() === currentHolder?.toLowerCase();
     const isPreviousHolder = address?.toLowerCase() === previousHolder?.toLowerCase();
-    const canGrab = isConnected && !isOwner && isMelting;
+    const canGrab = isConnected && !isOwner && isMelting && !canSpawn; // Can't grab if phoenix spawn available
+
+    // Phoenix spawn handler
+    const handleSpawnCore = () => {
+        play('click');
+        writeContract({
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: TheArbitrumCoreAbi,
+            functionName: 'spawnNewCore',
+        });
+    };
 
     // Stability calculation: (SAFE_LIMIT - blocksHeld) / SAFE_LIMIT * 100
     const stabilityPercent = Math.max(0, Math.min(100, (1 - heat) * 100));
@@ -421,6 +431,23 @@ export default function GameView() {
                                     'EJECT CORE →'
                                 )}
                             </button>
+                        </div>
+                    ) : canSpawn && isConnected ? (
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-center gap-2 text-meltdown animate-pulse">
+                                <Flame className="w-4 h-4" />
+                                <span className="text-[10px] font-bold tracking-widest uppercase">CORE DEAD // PHOENIX PROTOCOL AVAILABLE</span>
+                            </div>
+                            <button
+                                onClick={handleSpawnCore}
+                                disabled={isPending || isConfirming}
+                                className="btn w-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold shadow-[0_0_30px_rgba(255,100,0,0.5)] animate-pulse"
+                            >
+                                {isPending || isConfirming ? 'SPAWNING...' : '🔥 SPAWN NEW CORE'}
+                            </button>
+                            <div className="text-[9px] text-center opacity-50">
+                                Core #{activeCoreId?.toString()} has been abandoned. Claim the next generation!
+                            </div>
                         </div>
                     ) : canGrab ? (
                         <div className="space-y-2">

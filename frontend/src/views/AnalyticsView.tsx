@@ -23,7 +23,7 @@ import PageLayout from '../components/layout/PageLayout';
 import ViewHeader from '../components/layout/ViewHeader';
 import HUDCard from '../components/ui/HUDCard';
 
-const CONTRACT_ADDRESS = "0x533e35450f99a96b3e55a9a97c864a17d11e3edf";
+const CONTRACT_ADDRESS = "0xe0687d9830081bbd7696f4d8a3a8169aaa986039";
 
 interface TransferEvent {
     from: string;
