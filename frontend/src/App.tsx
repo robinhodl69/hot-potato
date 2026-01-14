@@ -17,10 +17,9 @@ import { Zap, AlertTriangle } from "lucide-react";
 
 import TheArbitrumCoreAbi from "./abi/TheArbitrumCore.json";
 import CoreVisual from "./components/core/CoreVisual";
-import RetroGrid from "./components/effects/RetroGrid";
 import { useSynth } from "./hooks/useSynth";
 
-const CONTRACT_ADDRESS = "0xe0687d9830081bbd7696f4d8a3a8169aaa986039";
+const CONTRACT_ADDRESS = '0xf8b5cdf482b197555a0e7c2c9d98f05d21b9c5b3';
 const SAFE_LIMIT_BLOCKS = 900;
 
 export default function App() {
@@ -36,7 +35,7 @@ export default function App() {
     abi: TheArbitrumCoreAbi,
     functionName: 'gameState',
     query: { refetchInterval: 3000 }
-  }) as { data: [string, string, bigint, boolean] | undefined };
+  }) as { data: [string, string, bigint, boolean, bigint] | undefined };
 
   const { data: userPoints } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
@@ -116,7 +115,7 @@ export default function App() {
   return (
     <div className="h-screen w-screen overflow-hidden relative scanlines">
       {/* ===== BACKGROUND ===== */}
-      <RetroGrid isMelting={isMelting} />
+      <div className="fixed inset-0 bg-black -z-10" />
 
       {/* ===== MAIN CONTENT ===== */}
       <div className="relative z-10 h-full flex flex-col">

@@ -14,7 +14,6 @@ mini-alloc = { version = "=0.9.0", default-features = false }
 openzeppelin-stylus = { git = "https://github.com/OpenZeppelin/rust-contracts-stylus", tag = "v0.2.0", default-features = false }
 
 alloy-primitives = { version = "0.8.20", default-features = false, features = ["tiny-keccak"] }
-alloy-sol-types = { version = "0.8.20", default-features = false }
 
 [dev-dependencies]
 motsu = "0.10.0"

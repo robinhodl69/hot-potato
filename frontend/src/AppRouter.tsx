@@ -19,7 +19,7 @@ import { useSynth } from './hooks/useSynth';
 import TheArbitrumCoreAbi from './abi/TheArbitrumCore.json';
 import NetworkGuard from './components/auth/NetworkGuard';
 
-const CONTRACT_ADDRESS = "0xe0687d9830081bbd7696f4d8a3a8169aaa986039";
+const CONTRACT_ADDRESS = '0xf8b5cdf482b197555a0e7c2c9d98f05d21b9c5b3';
 const SAFE_LIMIT_BLOCKS = 900;
 
 // Global game state context
@@ -31,6 +31,7 @@ interface GameStateContextType {
     blockNumber: bigint | undefined;
     activeCoreId: bigint | undefined;
     canSpawn: boolean;
+    lastTransferBlock: bigint | undefined;
 }
 
 const GameStateContext = createContext<GameStateContextType>({
@@ -41,6 +42,7 @@ const GameStateContext = createContext<GameStateContextType>({
     blockNumber: undefined,
     activeCoreId: undefined,
     canSpawn: false,
+    lastTransferBlock: undefined,
 });
 
 export const useGameState = () => useContext(GameStateContext);
@@ -185,19 +187,17 @@ function AppContent() {
         query: { refetchInterval: 3000 }
     }) as { data: boolean | undefined };
 
-    // Derived state
+    // TRUST THE CONTRACT for isMelting
+    const isMelting = gameState?.[3] === true;
+    const canSpawn = canSpawnData === true;
+
+    // Only calculate heat for UI visualization if NOT melting
+    // If melting, set heat to 1+ (danger state)
+    const heat = isMelting ? 1.0 : 0;
+
     const currentHolder = gameState?.[0];
     const previousHolder = gameState?.[1];
-    const lastTransferBlock = gameState?.[2] || 0n;
     const activeCoreId = gameState?.[4];
-
-    // Fix: If lastTransferBlock is 0 (not initialized), heat is 0
-    const blocksHeld = (blockNumber && lastTransferBlock > 0n) ? Number(blockNumber - lastTransferBlock) : 0;
-    const heat = Math.min(Math.max(0, blocksHeld / SAFE_LIMIT_BLOCKS), 5); // Clamp to 0-5x meltdown
-
-    // Robust isMelting: True if contract says so OR if local heat is >= 1.0
-    const isMelting = gameState?.[3] || heat >= 1.0;
-    const canSpawn = canSpawnData || false;
 
     const gameStateValue: GameStateContextType = {
         heat,
@@ -207,6 +207,7 @@ function AppContent() {
         blockNumber,
         activeCoreId,
         canSpawn,
+        lastTransferBlock: gameState?.[2],
     };
 
     const location = useLocation();

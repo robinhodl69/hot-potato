@@ -21,16 +21,17 @@ import { useSynth } from '../hooks/useSynth';
 import { useGameState } from '../AppRouter';
 import TheArbitrumCoreAbi from '../abi/TheArbitrumCore.json';
 
-const CONTRACT_ADDRESS = "0xe0687d9830081bbd7696f4d8a3a8169aaa986039";
+const CONTRACT_ADDRESS = '0xf8b5cdf482b197555a0e7c2c9d98f05d21b9c5b3';
 const SAFE_LIMIT_BLOCKS = 900;
 
 export default function GameView() {
     const { isConnected, address } = useAccount();
     const { connect, connectors } = useConnect();
     const { play } = useSynth();
-    const { heat, isMelting, currentHolder, previousHolder, blockNumber, activeCoreId, canSpawn } = useGameState();
+    const { heat, isMelting, currentHolder, previousHolder, blockNumber, activeCoreId, canSpawn, lastTransferBlock } = useGameState();
     const lastSonarTime = useRef(0);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
+    const [isExploding, setIsExploding] = useState(false);
 
     // ========================
     // CONTRACT READS
@@ -70,14 +71,31 @@ export default function GameView() {
         });
     };
 
-    // Stability calculation: (SAFE_LIMIT - blocksHeld) / SAFE_LIMIT * 100
-    const stabilityPercent = Math.max(0, Math.min(100, (1 - heat) * 100));
-    const blocksRemaining = Math.max(SAFE_LIMIT_BLOCKS - (heat * SAFE_LIMIT_BLOCKS), 0);
-    const timeRemaining = Math.floor(blocksRemaining * 2); // ~2s per block on Arbitrum
+    // === REAL-TIME L2 BLOCK TIMER ===
+    // Contract now uses ArbSys (L2 blocks). 7200 blocks = ~30 minutes at 0.25s/block.
+    const SAFE_LIMIT_BLOCKS_L2 = 7200;
+    const SECONDS_PER_BLOCK = 0.25;
+
+    // Get real values from context (already destructured above)
+
+    // Calculate real blocks remaining
+    const blocksHeld = (blockNumber && lastTransferBlock && lastTransferBlock > 0n)
+        ? Number(blockNumber - lastTransferBlock)
+        : 0;
+
+    const blocksRemaining = Math.max(0, SAFE_LIMIT_BLOCKS_L2 - blocksHeld);
+    const timeRemaining = isMelting ? 0 : Math.floor(blocksRemaining * SECONDS_PER_BLOCK);
+
+    // Stability based on real block progress
+    const stabilityPercent = isMelting ? 0 : Math.max(0, (blocksRemaining / SAFE_LIMIT_BLOCKS_L2) * 100);
 
     const formatTime = (seconds: number) => {
-        const m = Math.floor(seconds / 60);
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
         const s = seconds % 60;
+        if (h > 0) {
+            return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
@@ -168,6 +186,8 @@ export default function GameView() {
 
     const handleGrabCore = () => {
         play('click');
+        setIsExploding(true);
+        setTimeout(() => setIsExploding(false), 1500); // Reset after animation
         writeContract({
             address: CONTRACT_ADDRESS as `0x${string}`,
             abi: TheArbitrumCoreAbi,
@@ -304,8 +324,54 @@ export default function GameView() {
             </header>
 
             {/* TOP SECTION - Core Visual Only */}
-            <div className="h-[45%] flex items-center justify-center">
-                <div className="w-40 h-40 md:w-48 md:h-48">
+            <div className="h-[45%] flex items-center justify-center relative">
+                {/* Explosion Animation Overlay */}
+                <AnimatePresence>
+                    {isExploding && (
+                        <motion.div
+                            className="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                        >
+                            {/* Explosion Rings */}
+                            {[1, 2, 3, 4].map((ring) => (
+                                <motion.div
+                                    key={ring}
+                                    className="absolute rounded-full border-4"
+                                    style={{
+                                        borderColor: ring % 2 === 0 ? '#ff4400' : '#ffcc00',
+                                        boxShadow: `0 0 40px ${ring % 2 === 0 ? '#ff4400' : '#ffcc00'}`,
+                                    }}
+                                    initial={{ width: 20, height: 20, opacity: 1 }}
+                                    animate={{
+                                        width: [20, 300 + ring * 50],
+                                        height: [20, 300 + ring * 50],
+                                        opacity: [1, 0],
+                                    }}
+                                    transition={{
+                                        duration: 0.8,
+                                        delay: ring * 0.1,
+                                        ease: 'easeOut',
+                                    }}
+                                />
+                            ))}
+                            {/* Central Flash */}
+                            <motion.div
+                                className="absolute w-32 h-32 rounded-full"
+                                style={{
+                                    background: 'radial-gradient(circle, #ffffff 0%, #ff6600 50%, transparent 100%)',
+                                    boxShadow: '0 0 100px #ff4400, 0 0 200px #ff6600',
+                                }}
+                                initial={{ scale: 0, opacity: 1 }}
+                                animate={{ scale: [0, 3, 0], opacity: [1, 1, 0] }}
+                                transition={{ duration: 0.6, ease: 'easeOut' }}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <div className={`w-40 h-40 md:w-48 md:h-48 ${isExploding ? 'animate-shake' : ''}`}>
                     <CoreVisual heat={Math.min(heat, 1.3)} />
                 </div>
             </div>
@@ -315,37 +381,85 @@ export default function GameView() {
                 className="flex-1 flex flex-col relative z-30 bg-gradient-to-t from-black/80 via-black/50 to-transparent pt-4"
                 style={{ gap: '1rem' }}
             >
-                {/* Stability + Timer Row */}
-                <div className={`glass-panel ${isMelting ? 'glass-panel-meltdown' : 'glass-panel-stable'} p-4`}>
-                    <div className="flex items-center justify-between mb-2">
+                {/* CORE STABILITY GAUGE - Enhanced */}
+                <div
+                    className="glass-panel p-5 relative overflow-hidden"
+                    style={{
+                        borderColor: isMelting ? 'rgba(255, 60, 30, 0.4)' : 'rgba(0, 255, 255, 0.2)',
+                        background: isMelting
+                            ? 'linear-gradient(180deg, rgba(255, 60, 30, 0.15) 0%, rgba(0, 0, 0, 0.8) 100%)'
+                            : 'linear-gradient(180deg, rgba(0, 255, 255, 0.08) 0%, rgba(0, 0, 0, 0.8) 100%)',
+                    }}
+                >
+                    {/* Heat gradient overlay */}
+                    <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                            background: `linear-gradient(90deg, 
+                                rgba(0, 255, 255, ${Math.max(0, 1 - heat)}) 0%, 
+                                rgba(255, 200, 0, ${heat > 0.5 ? (heat - 0.5) * 2 : 0}) 50%,
+                                rgba(255, 60, 30, ${heat}) 100%)`,
+                            opacity: 0.15,
+                        }}
+                    />
+
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-3 relative z-10">
                         <div className="flex items-center gap-2">
                             {isMelting ? (
-                                <Flame className="w-4 h-4 text-meltdown animate-pulse" />
+                                <Flame className="w-5 h-5 text-meltdown animate-pulse" />
                             ) : (
-                                <Target className="w-4 h-4 text-stable" />
+                                <Target className="w-5 h-5 text-stable" />
                             )}
-                            <span className="text-micro opacity-50">STABILITY</span>
+                            <span className="text-xs font-bold tracking-widest opacity-60">CORE STABILITY</span>
                         </div>
-                        <div className={`font-heading text-xl font-bold ${isMelting ? 'text-meltdown' : 'text-stable'}`}>
+                        <div
+                            className="font-heading text-2xl font-bold"
+                            style={{
+                                color: heat < 0.5 ? '#00ffff' : heat < 0.8 ? '#ffcc00' : '#ff3c1e',
+                                textShadow: `0 0 20px ${heat < 0.5 ? 'rgba(0,255,255,0.5)' : heat < 0.8 ? 'rgba(255,200,0,0.5)' : 'rgba(255,60,30,0.8)'}`,
+                            }}
+                        >
                             {stabilityPercent.toFixed(0)}%
                         </div>
                     </div>
-                    {/* Progress Bar */}
-                    <div className="h-2 bg-black/50 rounded-full overflow-hidden">
+
+                    {/* Progress Bar - Enhanced */}
+                    <div className="h-3 bg-black/60 rounded-full overflow-hidden mb-4 relative z-10">
                         <motion.div
-                            className={`h-full ${isMelting ? 'bg-meltdown' : 'bg-stable'}`}
+                            className="h-full rounded-full"
+                            style={{
+                                background: heat < 0.5
+                                    ? 'linear-gradient(90deg, #00ffff, #2dd4bf)'
+                                    : heat < 0.8
+                                        ? 'linear-gradient(90deg, #ffcc00, #ff9900)'
+                                        : 'linear-gradient(90deg, #ff6600, #ff2200)',
+                                boxShadow: `0 0 10px ${heat < 0.5 ? '#00ffff' : heat < 0.8 ? '#ffcc00' : '#ff3300'}`,
+                            }}
                             initial={{ width: '100%' }}
                             animate={{ width: `${stabilityPercent}%` }}
                             transition={{ duration: 0.5 }}
                         />
                     </div>
-                    {/* Timer */}
-                    <div className="mt-3 flex items-center justify-between">
-                        <div className="text-micro opacity-40">
-                            {isMelting ? 'CRITICAL // BURNING' : 'TIME TO MELTDOWN'}
+
+                    {/* Countdown Timer - LARGE & PROMINENT */}
+                    <div className="text-center relative z-10">
+                        <div className="text-micro opacity-50 mb-1 tracking-widest">
+                            {isMelting ? '⚠️ MELTDOWN ACTIVE' : 'TIME TO MELTDOWN'}
                         </div>
-                        <div className={`font-heading text-2xl font-bold ${isMelting ? 'text-meltdown' : 'text-white'}`}>
+                        <div
+                            className={`font-heading font-bold ${isMelting ? 'animate-pulse' : ''}`}
+                            style={{
+                                fontSize: '3rem',
+                                lineHeight: 1,
+                                color: heat < 0.5 ? '#ffffff' : heat < 0.8 ? '#ffcc00' : '#ff3c1e',
+                                textShadow: heat >= 0.8 ? '0 0 30px rgba(255,60,30,0.8)' : 'none',
+                            }}
+                        >
                             {formatTime(timeRemaining)}
+                        </div>
+                        <div className="text-micro opacity-40 mt-2">
+                            {Math.floor(blocksRemaining).toLocaleString()} blocks remaining
                         </div>
                     </div>
                 </div>

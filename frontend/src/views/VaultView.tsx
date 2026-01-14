@@ -15,7 +15,7 @@ import { useGameState } from '../AppRouter';
 import { useHistoricalData } from '../hooks/useHistoricalData';
 import TheArbitrumCoreAbi from '../abi/TheArbitrumCore.json';
 
-const CONTRACT_ADDRESS = "0xe0687d9830081bbd7696f4d8a3a8169aaa986039";
+const CONTRACT_ADDRESS = '0xf8b5cdf482b197555a0e7c2c9d98f05d21b9c5b3';
 
 // Achievement definitions
 const ACHIEVEMENTS = [
@@ -153,28 +153,30 @@ export default function VaultView() {
                     <span className="font-heading text-xs uppercase tracking-widest font-bold">ACHIEVEMENTS</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                    {ACHIEVEMENTS.map((achievement) => {
-                        const unlocked = unlockedAchievements.some(a => a.id === achievement.id);
-                        return (
+                {unlockedAchievements.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-2">
+                        {unlockedAchievements.map((achievement) => (
                             <motion.div
                                 key={achievement.id}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className={`p-3 rounded border ${unlocked
-                                    ? 'border-stable/30 bg-stable/5'
-                                    : 'border-white/5 opacity-40'
-                                    }`}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="p-3 rounded border border-stable/30 bg-stable/5"
                             >
                                 <div className="text-xl mb-1">{achievement.icon}</div>
-                                <div className={`font-heading text-micro font-bold ${unlocked ? 'text-stable' : ''}`}>
+                                <div className="font-heading text-micro font-bold text-stable">
                                     {achievement.name}
                                 </div>
                                 <div className="text-micro opacity-50">{achievement.desc}</div>
                             </motion.div>
-                        );
-                    })}
-                </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-6 opacity-40">
+                        <div className="text-2xl mb-2">🔒</div>
+                        <div className="text-micro">No badges earned yet</div>
+                        <div className="text-micro opacity-60 mt-1">Hold the Core to start earning!</div>
+                    </div>
+                )}
             </div>
         </div>
     );

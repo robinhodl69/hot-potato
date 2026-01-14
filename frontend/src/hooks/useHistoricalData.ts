@@ -3,7 +3,7 @@ import { usePublicClient } from 'wagmi';
 import { parseAbiItem } from 'viem';
 import TheArbitrumCoreAbi from '../abi/TheArbitrumCore.json';
 
-const CONTRACT_ADDRESS = "0xe0687d9830081bbd7696f4d8a3a8169aaa986039";
+const CONTRACT_ADDRESS = '0xf8b5cdf482b197555a0e7c2c9d98f05d21b9c5b3';
 const DEPLOY_BLOCK = 0n; // Should be actual deploy block to save RPC calls, using 0 for safety
 
 export interface LeaderboardEntry {

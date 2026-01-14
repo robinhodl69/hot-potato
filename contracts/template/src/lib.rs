@@ -10,7 +10,7 @@ use stylus_sdk::{
     prelude::*,
     storage::{StorageAddress, StorageU256, StorageMap, StorageBool},
 };
-use alloc::{string::String, vec, vec::Vec, format};
+use alloc::{string::String, vec, vec::Vec};
 
 /// Internal panic handler for no_std execution
 #[cfg(target_arch = "wasm32")]
@@ -51,20 +51,25 @@ pub struct TheArbitrumCore {
 
 // Logic Constants
 const POINTS_PER_INTERVAL: u64 = 10;
-const INTERVAL_BLOCKS: u64 = 100;       // Every 100 blocks (~3.3 min)
-const SAFE_LIMIT_BLOCKS: u64 = 900;     // 30 Minutes (~1800s / 2s block)
+const INTERVAL_BLOCKS: u64 = 800;       // Every ~200s (~3.3 min)
+const SAFE_LIMIT_BLOCKS: u64 = 7200;    // 30 Minutes (at 0.25s/block)
 const BURN_RATE_BPS: u64 = 500;         // 5% in Basis Points
-const BURN_INTERVAL_BLOCKS: u64 = 30;   // 1 Minute (~60s / 2s block)
-const INACTIVITY_BLOCKS: u64 = 1800;    // 1 hour (v2: reduced from 48h)
-const PHOENIX_COOLDOWN: u64 = 900;      // 30 min after meltdown to spawn
+const BURN_INTERVAL_BLOCKS: u64 = 240;  // 1 Minute (at 0.25s/block)
+const INACTIVITY_BLOCKS: u64 = 14400;   // 1 hour (v2: reduced from 48h)
+const PHOENIX_COOLDOWN: u64 = 7200;     // 30 min after meltdown to spawn
 
 #[public]
 #[inherit(Erc721)]
 impl TheArbitrumCore {
+    /// Internal: Get the Arbitrum L2 block number
+    fn _get_l2_block_number(&self) -> U256 {
+        U256::from(self.vm().block_number())
+    }
+
     /// Initialize the game and mint the first Core (ID: 1)
     pub fn initialize(&mut self) -> Result<(), Vec<u8>> {
         if self.core_minted.get() {
-            return Err(b"Core already minted".to_vec());
+            return Err(b"MINTED".to_vec());
         }
         let admin = self.vm().msg_sender();
         let first_core_id = U256::from(1);
@@ -74,8 +79,8 @@ impl TheArbitrumCore {
         self.current_holder.set(admin);
         self.active_core_id.set(first_core_id);
         self.total_cores_minted.set(first_core_id);
-        self.last_transfer_block.set(U256::from(self.vm().block_number()));
-        self.last_activity_block.set(U256::from(self.vm().block_number()));
+        self.last_transfer_block.set(U256::from(self._get_l2_block_number()));
+        self.last_activity_block.set(U256::from(self._get_l2_block_number()));
         self.game_active.set(true);
         self.core_minted.set(true);
         Ok(())
@@ -88,18 +93,18 @@ impl TheArbitrumCore {
         let active_id = self.active_core_id.get();
         
         if sender != current {
-            return Err(b"Not the current holder".to_vec());
+            return Err(b"OWNER".to_vec());
         }
         
         if to == self.previous_holder.get() {
-            return Err(b"Cannot transfer to previous holder".to_vec());
+            return Err(b"PREV".to_vec());
         }
         
         // Anti-cheat: Check Farcaster FID
         let sender_fid = self.address_to_fid.get(sender);
         let to_fid = self.address_to_fid.get(to);
-        if sender_fid > U256::ZERO && sender_fid == to_fid {
-            return Err(b"Cannot transfer to same Farcaster FID".to_vec());
+        if sender_fid == to_fid && sender_fid > U256::ZERO {
+            return Err(b"FID".to_vec());
         }
         
         // Settle points for the sender before they lose the Core
@@ -111,8 +116,10 @@ impl TheArbitrumCore {
         // Update game state
         self.previous_holder.set(sender);
         self.current_holder.set(to);
-        self.last_transfer_block.set(U256::from(self.vm().block_number()));
-        self.last_activity_block.set(U256::from(self.vm().block_number()));
+        // Use stylus_sdk::block::number() for accurate block number
+        let current_block = U256::from(self._get_l2_block_number());
+        self.last_transfer_block.set(current_block);
+        self.last_activity_block.set(current_block);
         Ok(())
     }
 
@@ -124,11 +131,11 @@ impl TheArbitrumCore {
         let melting = self.is_melting()?;
         
         if !melting {
-            return Err(b"Core is stable".to_vec());
+            return Err(b"STABLE".to_vec());
         }
         
         if sender == holder {
-            return Err(b"You already hold the Core".to_vec());
+            return Err(b"HOLDING".to_vec());
         }
 
         // Settle points for the penalized holder
@@ -140,8 +147,8 @@ impl TheArbitrumCore {
         // Update game state
         self.previous_holder.set(holder);
         self.current_holder.set(sender);
-        self.last_transfer_block.set(U256::from(self.vm().block_number()));
-        self.last_activity_block.set(U256::from(self.vm().block_number()));
+        self.last_transfer_block.set(U256::from(self._get_l2_block_number()));
+        self.last_activity_block.set(U256::from(self._get_l2_block_number()));
         
         Ok(())
     }
@@ -150,7 +157,7 @@ impl TheArbitrumCore {
     /// The old Core stays with the inactive holder as a "dead trophy"
     pub fn spawn_new_core(&mut self) -> Result<(), Vec<u8>> {
         let sender = self.vm().msg_sender();
-        let current_block = U256::from(self.vm().block_number());
+        let current_block = U256::from(self._get_l2_block_number());
         let blocks_since_transfer = current_block - self.last_transfer_block.get();
         
         // Must be in meltdown AND past the phoenix cooldown
@@ -158,11 +165,11 @@ impl TheArbitrumCore {
         let phoenix_threshold = U256::from(SAFE_LIMIT_BLOCKS + PHOENIX_COOLDOWN);
         
         if blocks_since_transfer <= meltdown_threshold {
-            return Err(b"Core is still stable".to_vec());
+            return Err(b"STABLE".to_vec());
         }
         
         if blocks_since_transfer <= phoenix_threshold {
-            return Err(b"Phoenix cooldown not reached".to_vec());
+            return Err(b"CD".to_vec());
         }
         
         // Record the dead Core and its last holder
@@ -187,7 +194,7 @@ impl TheArbitrumCore {
 
     /// Internal: Calculate and update points balance (earnings or penalties)
     fn _settle_points(&mut self, holder: Address) -> Result<(), Vec<u8>> {
-        let blocks_held = U256::from(self.vm().block_number()) - self.last_transfer_block.get();
+        let blocks_held = U256::from(self._get_l2_block_number()) - self.last_transfer_block.get();
         let mut balance = self.points_balance.get(holder);
         
         if blocks_held <= U256::from(SAFE_LIMIT_BLOCKS) {
@@ -216,13 +223,13 @@ impl TheArbitrumCore {
     }
 
     pub fn is_melting(&self) -> Result<bool, Vec<u8>> {
-        let blocks_held = U256::from(self.vm().block_number()) - self.last_transfer_block.get();
+        let blocks_held = U256::from(self._get_l2_block_number()) - self.last_transfer_block.get();
         Ok(blocks_held > U256::from(SAFE_LIMIT_BLOCKS))
     }
 
     /// Check if the Core is ready for Phoenix respawn
     pub fn can_spawn_new_core(&self) -> Result<bool, Vec<u8>> {
-        let blocks_held = U256::from(self.vm().block_number()) - self.last_transfer_block.get();
+        let blocks_held = U256::from(self._get_l2_block_number()) - self.last_transfer_block.get();
         Ok(blocks_held > U256::from(SAFE_LIMIT_BLOCKS + PHOENIX_COOLDOWN))
     }
 
@@ -246,17 +253,35 @@ impl TheArbitrumCore {
         ))
     }
 
+    // === Security Overrides ===
+
+    /// Block standard transfer_from to force use of pass_the_core()
+    pub fn transfer_from(&mut self, _from: Address, _to: Address, _token_id: U256) -> Result<(), Vec<u8>> {
+        Err(b"RULES".to_vec())
+    }
+
+    /// Block standard safe_transfer_from (variante 1)
+    pub fn safe_transfer_from(&mut self, _from: Address, _to: Address, _token_id: U256) -> Result<(), Vec<u8>> {
+        Err(b"RULES".to_vec())
+    }
+
+    /// Block standard safe_transfer_from (variante 2 con data)
+    #[selector(name = "safeTransferFrom")]
+    pub fn safe_transfer_from_with_data(&mut self, _from: Address, _to: Address, _token_id: U256, _data: Vec<u8>) -> Result<(), Vec<u8>> {
+        Err(b"RULES".to_vec())
+    }
+
     // === Admin Functions ===
 
     pub fn admin_reset(&mut self) -> Result<(), Vec<u8>> {
         let sender = self.vm().msg_sender();
         if sender != self.admin.get() {
-            return Err(b"Not admin".to_vec());
+            return Err(b"ADMIN".to_vec());
         }
         
-        let inactivity = U256::from(self.vm().block_number()) - self.last_activity_block.get();
+        let inactivity = U256::from(self._get_l2_block_number()) - self.last_activity_block.get();
         if inactivity < U256::from(INACTIVITY_BLOCKS) {
-            return Err(b"Not inactive long enough".to_vec());
+            return Err(b"TIME".to_vec());
         }
         
         // Use Phoenix spawn instead of forced transfer
@@ -271,8 +296,8 @@ impl TheArbitrumCore {
         self.total_cores_minted.set(new_core_id);
         self.current_holder.set(sender);
         self.previous_holder.set(Address::ZERO);
-        self.last_transfer_block.set(U256::from(self.vm().block_number()));
-        self.last_activity_block.set(U256::from(self.vm().block_number()));
+        self.last_transfer_block.set(U256::from(self._get_l2_block_number()));
+        self.last_activity_block.set(U256::from(self._get_l2_block_number()));
         
         Ok(())
     }
@@ -296,30 +321,12 @@ impl TheArbitrumCore {
     }
 
     #[selector(name = "tokenURI")]
-    pub fn token_uri(&self, token_id: U256) -> Result<String, Vec<u8>> {
-        let active_id = self.active_core_id.get();
-        let is_dead = token_id != active_id;
-        let _holder = if is_dead {
-            self.dead_core_holders.get(token_id)
-        } else {
-            self.current_holder.get()
-        };
-        
-        let status = if is_dead {
-            "DEAD"
-        } else if self.is_melting()? {
-            "MELTDOWN"
-        } else {
-            "STABLE"
-        };
-        
-        let metadata = format!(
-            r#"{{"name":"The Core #{} [{}]","description":"Hot Potato NFT on Arbitrum. Pass it before it melts!","attributes":[{{"trait_type":"Status","value":"{}"}},{{"trait_type":"Generation","value":"{}"}}]}}"#,
-            token_id,
-            if is_dead { "DEAD" } else { "ACTIVE" },
-            status,
-            token_id
-        );
-        Ok(metadata)
+    pub fn token_uri(&self, _token_id: U256) -> Result<String, Vec<u8>> {
+        let status = if self.is_melting()? { "MELT" } else { "OK" };
+        let mut out = Vec::new();
+        out.extend_from_slice(b"{\"name\":\"Core\",\"attributes\":[{\"trait_type\":\"Status\",\"value\":\"");
+        out.extend_from_slice(status.as_bytes());
+        out.extend_from_slice(b"\"}]}");
+        Ok(String::from_utf8(out).unwrap_or_default())
     }
 }
