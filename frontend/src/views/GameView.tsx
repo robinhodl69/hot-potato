@@ -383,7 +383,7 @@ export default function GameView() {
                 </AnimatePresence>
 
                 <div className={`w-40 h-40 md:w-48 md:h-48 ${isExploding ? 'animate-shake' : ''}`}>
-                    <CoreVisual heat={Math.min(heat, 1.3)} />
+                    <CoreVisual heat={Math.min(heat, 1.3)} isExploded={canSpawn} />
                 </div>
             </div>
 

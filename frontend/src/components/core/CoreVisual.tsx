@@ -4,9 +4,10 @@
  */
 interface CoreVisualProps {
   heat: number; // 0 (Safe) to 1+ (Meltdown)
+  isExploded?: boolean; // Core is dead, waiting for spawn
 }
 
-export default function CoreVisual({ heat }: CoreVisualProps) {
+export default function CoreVisual({ heat, isExploded = false }: CoreVisualProps) {
   // Dynamic state based on heat level
   const isMelting = heat >= 0.8;
   const isOverheating = heat >= 1.0;
@@ -21,6 +22,192 @@ export default function CoreVisual({ heat }: CoreVisualProps) {
   // Animation speed inversely proportional to danger
   const pulseSpeed = Math.max(1.5 - heat * 1.2, 0.3);
   const rotateSpeed = Math.max(20 - heat * 15, 3);
+
+  // Exploded state - Core visible but exploding with particles
+  if (isExploded) {
+    const explosionColor = '#ff2200';
+    const explosionGlow = 'rgba(255, 50, 0, 0.9)';
+
+    return (
+      <div className="w-full h-full flex items-center justify-center relative animate-explosion-shake">
+
+        {/* Explosion flash burst */}
+        <div
+          className="absolute rounded-full"
+          style={{
+            width: '450px',
+            height: '450px',
+            background: 'radial-gradient(circle, rgba(255,100,0,0.4) 0%, rgba(255,50,0,0.15) 30%, transparent 60%)',
+            animation: 'explosion-pulse 0.3s ease-in-out infinite',
+          }}
+        />
+
+        {/* Outer Ring - Breaking apart */}
+        <div
+          className="absolute w-72 h-72 rounded-full border-2"
+          style={{
+            borderColor: explosionColor,
+            borderStyle: 'dashed',
+            boxShadow: `0 0 60px ${explosionGlow}`,
+            animation: 'spin 2s linear infinite, flicker 0.1s ease-in-out infinite',
+            opacity: 0.7,
+          }}
+        />
+
+        {/* Middle Ring - Unstable */}
+        <div
+          className="absolute w-56 h-56 rounded-full border-2"
+          style={{
+            borderColor: '#ff4422',
+            boxShadow: `0 0 50px ${explosionGlow}, inset 0 0 40px ${explosionGlow}`,
+            animation: 'spin 1.5s linear infinite reverse, flicker 0.15s ease-in-out infinite',
+            opacity: 0.6,
+          }}
+        />
+
+        {/* Hexagon Frame - Flickering */}
+        <div
+          className="absolute w-48 h-48"
+          style={{
+            background: `linear-gradient(135deg, ${explosionColor}cc, transparent 60%)`,
+            clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+            animation: 'spin 2.5s linear infinite, flicker 0.1s ease-in-out infinite',
+          }}
+        />
+
+        {/* Inner Core - Overloading */}
+        <div
+          className="absolute w-40 h-40 rounded-full"
+          style={{
+            background: `radial-gradient(circle at 30% 30%, ${explosionColor} 0%, #ff4422 50%, ${explosionColor}99 100%)`,
+            boxShadow: `
+              0 0 60px ${explosionGlow},
+              0 0 120px ${explosionGlow},
+              0 0 180px ${explosionGlow},
+              inset 0 0 60px ${explosionColor}
+            `,
+            animation: 'explosion-core-pulse 0.2s ease-in-out infinite',
+          }}
+        />
+
+        {/* Center - Bright overload */}
+        <div
+          className="absolute w-20 h-20 rounded-full"
+          style={{
+            background: `radial-gradient(circle, white 0%, ${explosionColor} 30%, #ff8800 100%)`,
+            boxShadow: `0 0 50px ${explosionColor}, 0 0 80px ${explosionColor}`,
+            animation: 'flicker 0.08s ease-in-out infinite',
+          }}
+        />
+
+        {/* Explosion particles flying outward */}
+        {[...Array(16)].map((_, i) => {
+          const angle = (i * 22.5) * (Math.PI / 180);
+          const distance = 100 + (i % 3) * 30;
+          return (
+            <div
+              key={i}
+              className="absolute rounded-full"
+              style={{
+                width: `${6 + (i % 4) * 3}px`,
+                height: `${6 + (i % 4) * 3}px`,
+                background: i % 2 === 0 ? '#ff4400' : '#ff8800',
+                boxShadow: '0 0 8px rgba(255,100,0,0.9)',
+                animation: `particle-fly-${i % 4} ${0.8 + (i % 3) * 0.3}s ease-out infinite`,
+                animationDelay: `${(i % 4) * 0.1}s`,
+              }}
+            />
+          );
+        })}
+
+        {/* Ember particles */}
+        {[...Array(8)].map((_, i) => (
+          <div
+            key={`ember-${i}`}
+            className="absolute w-1 h-1 rounded-full bg-orange-400"
+            style={{
+              animation: `ember-float-${i % 4} ${1.5 + (i % 3) * 0.5}s ease-out infinite`,
+              opacity: 0.9,
+            }}
+          />
+        ))}
+
+        {/* Explosion keyframes */}
+        <style>{`
+          @keyframes explosion-shake {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            10% { transform: translate(-4px, 2px) rotate(-1deg); }
+            20% { transform: translate(4px, -3px) rotate(1deg); }
+            30% { transform: translate(-3px, 4px) rotate(-0.5deg); }
+            40% { transform: translate(3px, -2px) rotate(0.5deg); }
+            50% { transform: translate(-2px, 3px) rotate(-1deg); }
+            60% { transform: translate(4px, -4px) rotate(1deg); }
+            70% { transform: translate(-4px, 2px) rotate(-0.5deg); }
+            80% { transform: translate(2px, -3px) rotate(0.5deg); }
+            90% { transform: translate(-3px, 4px) rotate(-1deg); }
+          }
+          .animate-explosion-shake { animation: explosion-shake 0.15s ease-in-out infinite; }
+          
+          @keyframes explosion-pulse {
+            0%, 100% { transform: scale(1); opacity: 0.4; }
+            50% { transform: scale(1.1); opacity: 0.6; }
+          }
+          
+          @keyframes explosion-core-pulse {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.15); opacity: 1; }
+          }
+          
+          @keyframes flicker {
+            0%, 100% { opacity: 0.9; }
+            25% { opacity: 0.7; }
+            50% { opacity: 1; }
+            75% { opacity: 0.6; }
+          }
+          
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          
+          @keyframes particle-fly-0 {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(120px, -80px) scale(0.3); opacity: 0; }
+          }
+          @keyframes particle-fly-1 {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(-100px, -100px) scale(0.2); opacity: 0; }
+          }
+          @keyframes particle-fly-2 {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(110px, 90px) scale(0.4); opacity: 0; }
+          }
+          @keyframes particle-fly-3 {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(-90px, 110px) scale(0.3); opacity: 0; }
+          }
+          
+          @keyframes ember-float-0 {
+            0% { transform: translate(0, 0); opacity: 1; }
+            100% { transform: translate(40px, -120px); opacity: 0; }
+          }
+          @keyframes ember-float-1 {
+            0% { transform: translate(0, 0); opacity: 1; }
+            100% { transform: translate(-50px, -100px); opacity: 0; }
+          }
+          @keyframes ember-float-2 {
+            0% { transform: translate(0, 0); opacity: 1; }
+            100% { transform: translate(30px, -130px); opacity: 0; }
+          }
+          @keyframes ember-float-3 {
+            0% { transform: translate(0, 0); opacity: 1; }
+            100% { transform: translate(-40px, -110px); opacity: 0; }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
 
   return (
     <div className={`w-full h-full flex items-center justify-center relative ${isOverheating ? 'animate-shake' : ''}`}>
@@ -212,3 +399,4 @@ export default function CoreVisual({ heat }: CoreVisualProps) {
     </div>
   );
 }
+
