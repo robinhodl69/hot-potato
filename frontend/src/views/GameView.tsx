@@ -21,14 +21,14 @@ import { useSynth } from '../hooks/useSynth';
 import { useGameState } from '../AppRouter';
 import TheArbitrumCoreAbi from '../abi/TheArbitrumCore.json';
 
-const CONTRACT_ADDRESS = '0xf8b5cdf482b197555a0e7c2c9d98f05d21b9c5b3';
-const SAFE_LIMIT_BLOCKS = 900;
+const CONTRACT_ADDRESS = '0xd499da7647edf49770b01130baa1c9bd73e6083a';
+const SAFE_LIMIT_BLOCKS = 7200;
 
 export default function GameView() {
     const { isConnected, address } = useAccount();
     const { connect, connectors } = useConnect();
     const { play } = useSynth();
-    const { heat, isMelting, currentHolder, previousHolder, blockNumber, activeCoreId, canSpawn, lastTransferBlock } = useGameState();
+    const { heat, isMelting, currentHolder, previousHolder, blockNumber, activeCoreId, canSpawn, lastTransferBlock, lastTransferTimestamp } = useGameState();
     const lastSonarTime = useRef(0);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
     const [isExploding, setIsExploding] = useState(false);
@@ -49,8 +49,8 @@ export default function GameView() {
     // ========================
     // CONTRACT WRITES
     // ========================
-    const { writeContract, data: txHash, isPending } = useWriteContract();
-    const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    const { writeContract, data: txHash, isPending, error: writeError } = useWriteContract();
+    const { isLoading: isConfirming, isSuccess: isConfirmed, error: confirmError } = useWaitForTransactionReceipt({
         hash: txHash,
     });
 
@@ -68,26 +68,35 @@ export default function GameView() {
             address: CONTRACT_ADDRESS as `0x${string}`,
             abi: TheArbitrumCoreAbi,
             functionName: 'spawnNewCore',
+            gas: 500000n,  // Stylus contracts need explicit gas
         });
     };
 
-    // === REAL-TIME L2 BLOCK TIMER ===
-    // Contract now uses ArbSys (L2 blocks). 7200 blocks = ~30 minutes at 0.25s/block.
-    const SAFE_LIMIT_BLOCKS_L2 = 7200;
-    const SECONDS_PER_BLOCK = 0.25;
+    // === EVENT-BASED TIMER ===
+    // Uses lastTransferTimestamp from Transfer event for accurate countdown
+    const SAFE_LIMIT_SECONDS = 1800; // 30 minutes
 
-    // Get real values from context (already destructured above)
+    // Real-time clock
+    const [currentTime, setCurrentTime] = useState(() => Math.floor(Date.now() / 1000));
 
-    // Calculate real blocks remaining
-    const blocksHeld = (blockNumber && lastTransferBlock && lastTransferBlock > 0n)
-        ? Number(blockNumber - lastTransferBlock)
+    // Update current time every second
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentTime(Math.floor(Date.now() / 1000));
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Calculate time remaining based on Transfer event timestamp
+    const secondsHeld = lastTransferTimestamp
+        ? Math.max(0, currentTime - lastTransferTimestamp)
         : 0;
 
-    const blocksRemaining = Math.max(0, SAFE_LIMIT_BLOCKS_L2 - blocksHeld);
-    const timeRemaining = isMelting ? 0 : Math.floor(blocksRemaining * SECONDS_PER_BLOCK);
+    const secondsRemaining = Math.max(0, SAFE_LIMIT_SECONDS - secondsHeld);
+    const timeRemaining = isMelting ? 0 : secondsRemaining;
 
-    // Stability based on real block progress
-    const stabilityPercent = isMelting ? 0 : Math.max(0, (blocksRemaining / SAFE_LIMIT_BLOCKS_L2) * 100);
+    // Stability based on real time progress
+    const stabilityPercent = isMelting ? 0 : Math.max(0, (secondsRemaining / SAFE_LIMIT_SECONDS) * 100);
 
     const formatTime = (seconds: number) => {
         const h = Math.floor(seconds / 3600);
@@ -193,6 +202,7 @@ export default function GameView() {
             abi: TheArbitrumCoreAbi,
             functionName: 'grabCore',
             args: [],
+            gas: 500000n,  // Stylus contracts need explicit gas
         });
     };
 
@@ -274,6 +284,7 @@ export default function GameView() {
             abi: TheArbitrumCoreAbi,
             functionName: 'passTheCore',
             args: [finalAddress as `0x${string}`],
+            gas: 500000n,  // Stylus contracts need explicit gas
         });
     };
 
@@ -459,7 +470,7 @@ export default function GameView() {
                             {formatTime(timeRemaining)}
                         </div>
                         <div className="text-micro opacity-40 mt-2">
-                            {Math.floor(blocksRemaining).toLocaleString()} blocks remaining
+                            {Math.floor(secondsRemaining).toLocaleString()} seconds remaining
                         </div>
                     </div>
                 </div>
@@ -619,10 +630,35 @@ export default function GameView() {
                             </motion.div>
                         )}
                     </AnimatePresence>
+
+                    {/* Error Feedback */}
+                    <AnimatePresence>
+                        {(writeError || confirmError) && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0 }}
+                                className="glass-panel border-red-500/50 bg-red-500/10 p-4 text-center mt-4"
+                            >
+                                <div className="flex items-center justify-center gap-2 text-red-400 font-bold text-xs uppercase tracking-widest">
+                                    <AlertTriangle className="w-4 h-4" />
+                                    TRANSMISSION FAILED
+                                </div>
+                                <div className="text-[10px] opacity-70 mt-1 uppercase text-red-200">
+                                    {writeError?.message?.includes('PREV') || writeError?.message?.includes('E2') ? 'CANNOT PASS BACK TO PREVIOUS HOLDER (E2)' :
+                                        writeError?.message?.includes('FID') || writeError?.message?.includes('E3') ? 'FID ANTI-CHEAT TRIGGERED (E3)' :
+                                            writeError?.message?.includes('OWNER') || writeError?.message?.includes('E1') ? 'NOT THE CORE OWNER (E1)' :
+                                                writeError?.message?.includes('E4') ? 'POINT SETTLEMENT FAILED (E4)' :
+                                                    writeError?.message?.includes('E5') ? 'ERC721 TRANSFER FAILED (E5)' :
+                                                        writeError?.message || confirmError?.message || 'UNKNOWN INTERFERENCE'}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
 
             <HowToPlayModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
-        </div>
+        </div >
     );
 }

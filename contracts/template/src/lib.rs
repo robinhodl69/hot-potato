@@ -49,20 +49,21 @@ pub struct TheArbitrumCore {
     pub last_activity_block: StorageU256,
 }
 
-// Logic Constants
+// Logic Constants (L1 blocks, ~12s each)
+// Frontend will handle visual timer conversion
 const POINTS_PER_INTERVAL: u64 = 10;
-const INTERVAL_BLOCKS: u64 = 800;       // Every ~200s (~3.3 min)
-const SAFE_LIMIT_BLOCKS: u64 = 7200;    // 30 Minutes (at 0.25s/block)
+const INTERVAL_BLOCKS: u64 = 17;        // ~200s (17 blocks × 12s)
+const SAFE_LIMIT_BLOCKS: u64 = 150;     // ~30 Minutes (150 blocks × 12s)
 const BURN_RATE_BPS: u64 = 500;         // 5% in Basis Points
-const BURN_INTERVAL_BLOCKS: u64 = 240;  // 1 Minute (at 0.25s/block)
-const INACTIVITY_BLOCKS: u64 = 14400;   // 1 hour (v2: reduced from 48h)
-const PHOENIX_COOLDOWN: u64 = 7200;     // 30 min after meltdown to spawn
+const BURN_INTERVAL_BLOCKS: u64 = 5;    // ~1 Minute (5 blocks × 12s)
+const INACTIVITY_BLOCKS: u64 = 300;     // ~1 hour (300 blocks × 12s)
+const PHOENIX_COOLDOWN: u64 = 150;      // 30 min after meltdown to spawn
 
 #[public]
 #[inherit(Erc721)]
 impl TheArbitrumCore {
-    /// Internal: Get the Arbitrum L2 block number
-    fn _get_l2_block_number(&self) -> U256 {
+    /// Internal: Get the block number (L1)
+    fn _get_block_number(&self) -> U256 {
         U256::from(self.vm().block_number())
     }
 
@@ -73,14 +74,15 @@ impl TheArbitrumCore {
         }
         let admin = self.vm().msg_sender();
         let first_core_id = U256::from(1);
+        let now = self._get_block_number();
         
         self.admin.set(admin);
         self.erc721._mint(admin, first_core_id)?;
         self.current_holder.set(admin);
         self.active_core_id.set(first_core_id);
         self.total_cores_minted.set(first_core_id);
-        self.last_transfer_block.set(U256::from(self._get_l2_block_number()));
-        self.last_activity_block.set(U256::from(self._get_l2_block_number()));
+        self.last_transfer_block.set(now);
+        self.last_activity_block.set(now);
         self.game_active.set(true);
         self.core_minted.set(true);
         Ok(())
@@ -88,6 +90,9 @@ impl TheArbitrumCore {
 
     /// Primary game action: Transfer the Core to another address
     pub fn pass_the_core(&mut self, to: Address) -> Result<(), Vec<u8>> {
+        if to == Address::ZERO {
+            return Err(b"ZERO".to_vec());
+        }
         let sender = self.vm().msg_sender();
         let current = self.current_holder.get();
         let active_id = self.active_core_id.get();
@@ -116,10 +121,10 @@ impl TheArbitrumCore {
         // Update game state
         self.previous_holder.set(sender);
         self.current_holder.set(to);
-        // Use stylus_sdk::block::number() for accurate block number
-        let current_block = U256::from(self._get_l2_block_number());
-        self.last_transfer_block.set(current_block);
-        self.last_activity_block.set(current_block);
+        
+        let now = self._get_block_number();
+        self.last_transfer_block.set(now);
+        self.last_activity_block.set(now);
         Ok(())
     }
 
@@ -145,10 +150,11 @@ impl TheArbitrumCore {
         self.erc721._transfer(holder, sender, active_id)?;
         
         // Update game state
+        let now = self._get_block_number();
         self.previous_holder.set(holder);
         self.current_holder.set(sender);
-        self.last_transfer_block.set(U256::from(self._get_l2_block_number()));
-        self.last_activity_block.set(U256::from(self._get_l2_block_number()));
+        self.last_transfer_block.set(now);
+        self.last_activity_block.set(now);
         
         Ok(())
     }
@@ -157,8 +163,9 @@ impl TheArbitrumCore {
     /// The old Core stays with the inactive holder as a "dead trophy"
     pub fn spawn_new_core(&mut self) -> Result<(), Vec<u8>> {
         let sender = self.vm().msg_sender();
-        let current_block = U256::from(self._get_l2_block_number());
-        let blocks_since_transfer = current_block - self.last_transfer_block.get();
+        let now = self._get_block_number();
+        let last_transfer = self.last_transfer_block.get();
+        let blocks_since_transfer = now.saturating_sub(last_transfer);
         
         // Must be in meltdown AND past the phoenix cooldown
         let meltdown_threshold = U256::from(SAFE_LIMIT_BLOCKS);
@@ -186,15 +193,17 @@ impl TheArbitrumCore {
         self.total_cores_minted.set(new_core_id);
         self.current_holder.set(sender);
         self.previous_holder.set(Address::ZERO);  // Reset cooldown
-        self.last_transfer_block.set(current_block);
-        self.last_activity_block.set(current_block);
+        self.last_transfer_block.set(now);
+        self.last_activity_block.set(now);
         
         Ok(())
     }
 
     /// Internal: Calculate and update points balance (earnings or penalties)
     fn _settle_points(&mut self, holder: Address) -> Result<(), Vec<u8>> {
-        let blocks_held = U256::from(self._get_l2_block_number()) - self.last_transfer_block.get();
+        let now = self._get_block_number();
+        let last_transfer = self.last_transfer_block.get();
+        let blocks_held = now.saturating_sub(last_transfer);
         let mut balance = self.points_balance.get(holder);
         
         if blocks_held <= U256::from(SAFE_LIMIT_BLOCKS) {
@@ -204,11 +213,11 @@ impl TheArbitrumCore {
             balance = balance + earned;
         } else {
             // Meltdown zone: Calculate burn penalty
-            let meltdown_blocks = blocks_held - U256::from(SAFE_LIMIT_BLOCKS);
+            let meltdown_blocks = blocks_held.saturating_sub(U256::from(SAFE_LIMIT_BLOCKS));
             let penalty_periods = meltdown_blocks / U256::from(BURN_INTERVAL_BLOCKS);
             
             // 5% penalty per period (minimized to total balance)
-            let penalty = balance * penalty_periods * U256::from(BURN_RATE_BPS) / U256::from(10000);
+            let penalty = (balance * penalty_periods * U256::from(BURN_RATE_BPS)) / U256::from(10000);
             balance = if penalty >= balance { U256::ZERO } else { balance - penalty };
         }
         
@@ -223,13 +232,17 @@ impl TheArbitrumCore {
     }
 
     pub fn is_melting(&self) -> Result<bool, Vec<u8>> {
-        let blocks_held = U256::from(self._get_l2_block_number()) - self.last_transfer_block.get();
+        let now = self._get_block_number();
+        let last = self.last_transfer_block.get();
+        let blocks_held = now.saturating_sub(last);
         Ok(blocks_held > U256::from(SAFE_LIMIT_BLOCKS))
     }
 
     /// Check if the Core is ready for Phoenix respawn
     pub fn can_spawn_new_core(&self) -> Result<bool, Vec<u8>> {
-        let blocks_held = U256::from(self._get_l2_block_number()) - self.last_transfer_block.get();
+        let now = self._get_block_number();
+        let last = self.last_transfer_block.get();
+        let blocks_held = now.saturating_sub(last);
         Ok(blocks_held > U256::from(SAFE_LIMIT_BLOCKS + PHOENIX_COOLDOWN))
     }
 
@@ -249,7 +262,7 @@ impl TheArbitrumCore {
             self.previous_holder.get(),
             self.last_transfer_block.get(),
             self.is_melting()?,
-            self.active_core_id.get(),  // v2: Include active core ID
+            self.active_core_id.get(),
         ))
     }
 
@@ -279,7 +292,8 @@ impl TheArbitrumCore {
             return Err(b"ADMIN".to_vec());
         }
         
-        let inactivity = U256::from(self._get_l2_block_number()) - self.last_activity_block.get();
+        let now = self._get_block_number();
+        let inactivity = now.saturating_sub(self.last_activity_block.get());
         if inactivity < U256::from(INACTIVITY_BLOCKS) {
             return Err(b"TIME".to_vec());
         }
@@ -296,8 +310,8 @@ impl TheArbitrumCore {
         self.total_cores_minted.set(new_core_id);
         self.current_holder.set(sender);
         self.previous_holder.set(Address::ZERO);
-        self.last_transfer_block.set(U256::from(self._get_l2_block_number()));
-        self.last_activity_block.set(U256::from(self._get_l2_block_number()));
+        self.last_transfer_block.set(now);
+        self.last_activity_block.set(now);
         
         Ok(())
     }

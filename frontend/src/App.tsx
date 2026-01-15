@@ -19,9 +19,9 @@ import TheArbitrumCoreAbi from "./abi/TheArbitrumCore.json";
 import CoreVisual from "./components/core/CoreVisual";
 import { useSynth } from "./hooks/useSynth";
 
-const CONTRACT_ADDRESS = '0xf8b5cdf482b197555a0e7c2c9d98f05d21b9c5b3';
-const SAFE_LIMIT_BLOCKS = 900;
-
+const CONTRACT_ADDRESS = '0xd499da7647edf49770b01130baa1c9bd73e6083a';
+const SAFE_LIMIT_BLOCKS = 7200;
+const BLOCK_TIME_SECONDS = 0.25;
 export default function App() {
   const { isConnected, address } = useAccount();
   const { connect, connectors } = useConnect();

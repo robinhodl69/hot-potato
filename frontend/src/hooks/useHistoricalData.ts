@@ -3,7 +3,7 @@ import { usePublicClient } from 'wagmi';
 import { parseAbiItem } from 'viem';
 import TheArbitrumCoreAbi from '../abi/TheArbitrumCore.json';
 
-const CONTRACT_ADDRESS = '0xf8b5cdf482b197555a0e7c2c9d98f05d21b9c5b3';
+const CONTRACT_ADDRESS = '0xd499da7647edf49770b01130baa1c9bd73e6083a';
 const DEPLOY_BLOCK = 0n; // Should be actual deploy block to save RPC calls, using 0 for safety
 
 export interface LeaderboardEntry {
@@ -32,7 +32,7 @@ export function useHistoricalData(currentHolder: string | undefined) {
 
                 const logs = await publicClient.getLogs({
                     address: CONTRACT_ADDRESS as `0x${string}`,
-                    event: parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)'),
+                    event: parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'),
                     fromBlock: fromBlock,
                     toBlock: 'latest'
                 });
